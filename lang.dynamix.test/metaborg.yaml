@@ -1,0 +1,9 @@
+---
+id: org.metaborg:lang.dynamix.test:0.1.0-SNAPSHOT
+name: Dynamix
+dependencies:
+  compile:
+  - org.metaborg:lang.dynamix:0.1.0-SNAPSHOT
+  - org.metaborg:org.metaborg.meta.lang.spt:${metaborgVersion}
+build:
+  useBuildSystemSpec: true

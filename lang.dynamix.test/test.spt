@@ -1,0 +1,7 @@
+module test
+
+language Dynamix
+
+test parse [[
+
+]] parse succeeds

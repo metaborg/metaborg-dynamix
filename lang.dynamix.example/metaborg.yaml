@@ -1,0 +1,13 @@
+---
+id: org.metaborg:lang.dynamix.example:0.1.0-SNAPSHOT
+name: Dynamix
+dependencies:
+  compile:
+  - org.metaborg:lang.dynamix:0.1.0-SNAPSHOT
+debug:
+  typesmart: false
+runtime:
+  nabl2:
+    debug: analysis files
+build:
+  useBuildSystemSpec: true
