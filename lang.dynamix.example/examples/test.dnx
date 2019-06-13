@@ -1,0 +1,83 @@
+//slotting namespaces: Var
+
+native    
+  __Iadd(e1, e2):
+    addi([[e1]], [[e2]])
+  
+  __ExitOK():
+    iload(0)
+    
+  __IF(c, stmts1, stmts2) with Label(THEN), Label(ELSE), Label(END):
+    jumpz([[c]], ELSE, THEN)
+    
+  THEN:
+    [[stmts1]]
+    jump(END)
+  ELSE:
+    [[stmts2]]
+    jump(END)
+  END:
+    
+  __WHILE(c, stmts) with Label(WHILE_LOOP), Label(WHILE_BODY), Label(EXIT):
+    jump(WHILE_LOOP)
+  WHILE_LOOP:
+    jumpz([[c]], EXIT, WHILE_BODY)
+    
+  THEN:
+    [[stmts1]]
+    jump(WHILE_LOOP)
+  ELSE:
+
+
+rules
+
+init: Program(stmts) ^(c, x) -> c with a
+  where
+    a := __ExitOK()
+    sequence stmt:: stmts ^this
+    
+    
+//                                        explicitly call the non-default continuation
+init: Program([stmts || last]) ^(c, x) -> c with a
+  where
+    a := stmt:: last ^this
+    sequence stmt:: stmts ^this
+    
+stmt: Assign(Ref(name), exp) ^ (c, x) -> continue
+  where
+    v := expr:: exp ^this
+//    resolved name := v
+    
+stmt: FunDef(Ref(func_name), args, body) ^ (c, x) -> continue
+  where
+    register_block(func_name, expr:: body ^this)
+    
+exp: Call(Ref(func_name), args) ^ (c, x) -> continue
+  where
+	b := new resolve_block(func_name)^(this, x)
+	arg := store exp:: args ^this @b
+	func := call^b
+    arg; func; rget
+    
+stmt: Return(exp) ^(c, x) -> c with val
+  where
+    val := exp:: exp^this
+    
+exp: Ref(name) ^ _ -> continue with val
+  where
+    val := get(resolve(name))
+    
+exp: Plus(exp1, exp2) ^ _ -> continue
+  where
+    v1  := exp:: exp1 ^ this
+    v2  := exp:: exp2 ^ this
+    __Iadd(v1, v2)
+     
+exp: Int(v) ^ _ -> continue with val
+  where
+    val := __Int(v)
+ 
+ 
+ 
+// breaks (which label?)
+// returns in if expression -> dead code

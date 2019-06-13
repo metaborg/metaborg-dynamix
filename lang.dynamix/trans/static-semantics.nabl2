@@ -8,6 +8,5 @@ rules
 
   init ^ (s) := new s.
 
-  [[ Empty() ^ (s) ]] :=
-    false | note "Specify name binding and typing rules in static-semantics.nabl2".
+  [[ DNX_Spec(_,_) ^ (s) ]].
 

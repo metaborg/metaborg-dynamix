@@ -2,7 +2,11 @@ module Common
 
 lexical syntax
 
-  ID             = [a-zA-Z] [a-zA-Z0-9]* 
+  ID             = [a-zA-Z\_] [a-zA-Z0-9\_]*
+  WILDCARD       = [\_]
+  CONSTRUCTOR    = [A-Z] [a-zA-Z0-9\_]* 
+  TEMPLATENAME   = [\_] [\_a-zA-Z0-9]* 
+  RULENAME       = [a-z] [a-z\-]* 
   INT            = "-"? [0-9]+ 
   STRING         = "\"" StringChar* "\"" 
   StringChar     = ~[\"\n] 
@@ -19,6 +23,17 @@ lexical syntax
   NewLineEOF     = EOF 
   EOF            =  
 
+lexical syntax
+  ID = "this"       {reject}
+  ID = "resolve"    {reject}
+  ID = "resolved"   {reject}
+  ID = "continue"   {reject}
+  ID = "where"      {reject}
+  ID = "with"       {reject}
+  ID = "_"          {reject}
+  ID = "rules"      {reject}
+  ID = "natives"    {reject}
+  
 lexical restrictions
 
   // Ensure greedy matching for lexicals
@@ -26,6 +41,10 @@ lexical restrictions
   CommentChar   -/- [\/]
   INT           -/- [0-9]
   ID            -/- [a-zA-Z0-9\_]
+  WILDCARD      -/- [a-zA-Z0-9\_]
+  TEMPLATENAME  -/- [a-zA-Z0-9\_]
+  CONSTRUCTOR   -/- [a-zA-Z0-9\_]
+  RULENAME      -/- [a-z\-]
   
   // EOF may not be followed by any char
   

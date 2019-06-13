@@ -1,0 +1,222 @@
+DNX_Spec(
+  Some(
+    DNX_Natives(
+      [ DNX_Template(
+          "__Iadd"
+        , [VarRef("e1"), VarRef("e2")]
+        , None()
+        , Exp(RGR_IAdd(DNX_TemplateVar(VarRef("e1")), DNX_TemplateVar(VarRef("e2"))))
+        )
+      , DNX_Template("__ExitOK", [], None(), Exp(RGR_ILoad("0")))
+      , DNX_Template(
+          "__IF"
+        , [VarRef("c"), VarRef("stmts1"), VarRef("stmts2")]
+        , Some(
+            Binds(
+              [LabelBind(VarRef("THEN")), LabelBind(VarRef("ELSE")), LabelBind(VarRef("END"))]
+            )
+          )
+        , Instr(
+            [ RGR_JumpZ(DNX_TemplateVar(VarRef("c")), FVM_Label("ELSE"), FVM_Label("THEN"))
+            , BlockBegin(FVM_Label("THEN"))
+            , DNX_TemplateVar(VarRef("stmts1"))
+            , RGR_Jump(FVM_Label("END"))
+            , BlockBegin(FVM_Label("ELSE"))
+            , DNX_TemplateVar(VarRef("stmts2"))
+            , RGR_Jump(FVM_Label("END"))
+            , BlockBegin(FVM_Label("END"))
+            ]
+          )
+        )
+      , DNX_Template(
+          "__WHILE"
+        , [VarRef("c"), VarRef("stmts")]
+        , Some(
+            Binds(
+              [LabelBind(VarRef("WHILE_LOOP")), LabelBind(VarRef("WHILE_BODY")), LabelBind(VarRef("EXIT"))]
+            )
+          )
+        , Instr(
+            [ RGR_Jump(FVM_Label("WHILE_LOOP"))
+            , BlockBegin(FVM_Label("WHILE_LOOP"))
+            , RGR_JumpZ(DNX_TemplateVar(VarRef("c")), FVM_Label("EXIT"), FVM_Label("WHILE_BODY"))
+            , BlockBegin(FVM_Label("THEN"))
+            , DNX_TemplateVar(VarRef("stmts1"))
+            , RGR_Jump(FVM_Label("WHILE_LOOP"))
+            , BlockBegin(FVM_Label("ELSE"))
+            ]
+          )
+        )
+      ]
+    )
+  )
+, [ DNX_Rules(
+      [ DNX_Rule(
+          "init"
+        , DNX_Term("Program", [DNX_Var("stmts")])
+        , Tuple([Var(VarRef("c")), Var(VarRef("x"))])
+        , RuleOutput(
+            Var(VarRef("c"))
+          , Some(With([VarRef("a")]))
+          )
+        , Some(
+            Where(
+              [Assign(VarRef("a"), TemplateApp("__ExitOK", []))]
+            , Some(
+                Concat([Sequence(Recurse("stmt", DNX_Var("stmts"), This()))])
+              )
+            )
+          )
+        )
+      , DNX_Rule(
+          "init"
+        , DNX_Term(
+            "Program"
+          , [DNX_List(
+               [DNX_Var("stmts")]
+             , Some(DNX_Last([DNX_Var("last")]))
+             )]
+          )
+        , Tuple([Var(VarRef("c")), Var(VarRef("x"))])
+        , RuleOutput(
+            Var(VarRef("c"))
+          , Some(With([VarRef("a")]))
+          )
+        , Some(
+            Where(
+              [Assign(VarRef("a"), Recurse("stmt", DNX_Var("last"), This()))]
+            , Some(
+                Concat([Sequence(Recurse("stmt", DNX_Var("stmts"), This()))])
+              )
+            )
+          )
+        )
+      , DNX_Rule(
+          "stmt"
+        , DNX_Term(
+            "Assign"
+          , [DNX_Term("Ref", [DNX_Var("name")]), DNX_Var("exp")]
+          )
+        , Tuple([Var(VarRef("c")), Var(VarRef("x"))])
+        , RuleOutput(Default(), None())
+        , Some(
+            Where(
+              [Assign(VarRef("v"), Recurse("expr", DNX_Var("exp"), This()))]
+            , None()
+            )
+          )
+        )
+      , DNX_Rule(
+          "stmt"
+        , DNX_Term(
+            "FunDef"
+          , [DNX_Term("Ref", [DNX_Var("func_name")]), DNX_Var("args"), DNX_Var("body")]
+          )
+        , Tuple([Var(VarRef("c")), Var(VarRef("x"))])
+        , RuleOutput(Default(), None())
+        , Some(
+            Where(
+              []
+            , Some(
+                Concat(
+                  [RegisterBlock(VarRef("func_name"), Recurse("expr", DNX_Var("body"), This()))]
+                )
+              )
+            )
+          )
+        )
+      , DNX_Rule(
+          "exp"
+        , DNX_Term(
+            "Call"
+          , [DNX_Term("Ref", [DNX_Var("func_name")]), DNX_Var("args")]
+          )
+        , Tuple([Var(VarRef("c")), Var(VarRef("x"))])
+        , RuleOutput(Default(), None())
+        , Some(
+            Where(
+              [ Assign(
+                  VarRef("b")
+                , NewCF(
+                    ResolveBlock(VarRef("func_name"))
+                  , Tuple([This(), Var(VarRef("x"))])
+                  )
+                )
+              , Assign(
+                  VarRef("arg")
+                , Store(
+                    Recurse("exp", DNX_Var("args"), This())
+                  , Var(VarRef("b"))
+                  )
+                )
+              , Assign(VarRef("func"), Call(Var(VarRef("b"))))
+              ]
+            , Some(
+                Concat(
+                  [VarRef(VarRef("arg")), VarRef(VarRef("func")), VarRef(VarRef("rget"))]
+                )
+              )
+            )
+          )
+        )
+      , DNX_Rule(
+          "stmt"
+        , DNX_Term("Return", [DNX_Var("exp")])
+        , Tuple([Var(VarRef("c")), Var(VarRef("x"))])
+        , RuleOutput(
+            Var(VarRef("c"))
+          , Some(With([VarRef("val")]))
+          )
+        , Some(
+            Where(
+              [Assign(VarRef("val"), Recurse("exp", DNX_Var("exp"), This()))]
+            , None()
+            )
+          )
+        )
+      , DNX_Rule(
+          "exp"
+        , DNX_Term("Ref", [DNX_Var("name")])
+        , Var(Var(Wildcard("_")))
+        , RuleOutput(Default(), Some(With([VarRef("val")])))
+        , Some(
+            Where(
+              [Assign(VarRef("val"), Get(Resolve(VarRef("name"))))]
+            , None()
+            )
+          )
+        )
+      , DNX_Rule(
+          "exp"
+        , DNX_Term("Plus", [DNX_Var("exp1"), DNX_Var("exp2")])
+        , Var(Var(Wildcard("_")))
+        , RuleOutput(Default(), None())
+        , Some(
+            Where(
+              [ Assign(VarRef("v1"), Recurse("exp", DNX_Var("exp1"), This()))
+              , Assign(VarRef("v2"), Recurse("exp", DNX_Var("exp2"), This()))
+              ]
+            , Some(
+                Concat(
+                  [TemplateApp("__Iadd", [VarRef("v1"), VarRef("v2")])]
+                )
+              )
+            )
+          )
+        )
+      , DNX_Rule(
+          "exp"
+        , DNX_Term("Int", [DNX_Var("v")])
+        , Var(Var(Wildcard("_")))
+        , RuleOutput(Default(), Some(With([VarRef("val")])))
+        , Some(
+            Where(
+              [Assign(VarRef("val"), TemplateApp("__Int", [VarRef("v")]))]
+            , None()
+            )
+          )
+        )
+      ]
+    )
+  ]
+)

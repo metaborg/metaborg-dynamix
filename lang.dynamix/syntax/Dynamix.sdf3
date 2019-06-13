@@ -3,11 +3,89 @@ module Dynamix
 imports
   
   Common
+  fvm-roger
 
 context-free start-symbols
   
-  Start
+  Spec
 
 context-free syntax
+  TemplateVar.DNX_TemplateVar = <[[<Var>]]>
+  Var.VarRef = ID
+  Var.Wildcard = WILDCARD
   
-  Start.Empty = <>
+  Spec.DNX_Spec = <
+<Natives?>
+<Rules+>
+>
+
+Natives.DNX_Natives = <
+native
+    <Template*>
+>
+
+Template.DNX_Template = <
+<TEMPLATENAME>(<{Var ", "}*>)<Binds?>:
+	<InstrOrExp>
+>
+
+InstrOrExp.Instr = Instr*
+InstrOrExp.Exp = Exp
+
+Binds.Binds = <with <{LabelBind ", "}+>>
+LabelBind.LabelBind = <Label(<Var>)>
+
+Rules.DNX_Rules = <
+rules
+    <Rule*>
+>
+
+Rule.DNX_Rule = <<RULENAME>: <Term> ^<ContinuationVar> -\> <RuleOutput>
+<Where?>
+
+>
+
+Term.DNX_Term = <<CONSTRUCTOR>(<{Term ", "}*>)>
+Term.DNX_Var  = ID
+Term.DNX_List = <[<{Term ", "}*> <Tail?>]>
+Tail.DNX_Tail = <| <Term>>
+Tail.DNX_Last = <|| <{Term ", "}+>>
+
+ContinuationVar.Var = ControlFrame
+ContinuationVar.Tuple = <(<{ControlFrame ", "}+>)>
+
+RuleOutput.RuleOutput = <<Continuation> <With?>>
+Continuation.Default = <continue>
+Continuation = ControlFrame
+
+With.With = <with <{Var ", "}+>>
+
+Where.Where = <where
+    <WhereAssign*>
+    <WhereCode?>
+>
+
+WhereAssign.Assign = <<Var> := <DExp>>
+WhereAssign.Set = <resolved <Var> := <DExp>>
+WhereCode.Concat = <<{WhereCodeExp ";"}+>>
+WhereCodeExp = DExp
+
+DExp.TemplateApp = <<TEMPLATENAME>(<{Var ", "}*>)>
+DExp.NewCF = <new <DExp> ^<ContinuationVar>>
+DExp.Sequence = <sequence <DApp>>
+DExp.Native = <native {
+  <InstrOrExp>
+}>
+DExp.Store = <store <DApp> @ <ControlFrame>>
+DExp.Resolve = <resolve(<Var>)>
+DExp.Get = <get(<DExp>)>
+DExp.Call = <call^<ControlFrame>>
+DExp.ResolveBlock = <resolve_block(<Var>)>
+DExp.RegisterBlock = <register_block(<Var>, <DExp>)>
+DExp.VarRef = Var
+DExp = DApp
+DApp.Recurse = <<RULENAME>:: <Term>^<ControlFrame>>
+
+ControlFrame.Var = <<Var>>
+ControlFrame.This = <this>
+

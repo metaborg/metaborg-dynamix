@@ -1,0 +1,129 @@
+module fvm-roger
+
+imports
+	fvm-common
+	Dynamix
+  
+sorts RBlock context-free syntax
+
+	Instr.RGR_OnReturn = <<{RGRVar ","}+> \<- <OnReturnExp>>
+
+//	Instr.RGR_PureAssign = <<RGRVar> \<- <Exp> @inline>
+	Instr.RGR_Terminal = ExpTerminal
+	Instr.RGR_Assign = <<RGRVar> \<- <Exp>>
+	
+	Instr = TemplateVar
+	Instr = ControlTerminal
+	Instr.BlockBegin = <<Label>:>
+	RGRVar = LOCAL
+//	RGRVar = REGISTER
+	
+sorts Exp context-free syntax
+	Exp = TemplateVar
+    Exp.RGR_Ref    = <<RGRVar>>
+    Exp.RGR_REq    = <eqr(<Exp>, <Exp>)>
+	
+	Exp = IntOpExp
+	IntOpExp.RGR_ILoad  = <iload(<INT>)>
+	IntOpExp.RGR_INeg   = <negi(<Exp>)>
+	IntOpExp.RGR_IAdd   = <addi(<Exp>, <Exp>)>
+	IntOpExp.RGR_IMul   = <muli(<Exp>, <Exp>)>
+	IntOpExp.RGR_ISub   = <subi(<Exp>, <Exp>)>
+	IntOpExp.RGR_IDiv   = <divi(<Exp>, <Exp>)>
+	IntOpExp.RGR_IMod   = <modi(<Exp>, <Exp>)>
+	
+	IntOpExp.RGR_IEq    = <eqi(<Exp>, <Exp>)>
+	IntOpExp.RGR_ILt    = <lti(<Exp>, <Exp>)>
+	IntOpExp.RGR_IGt    = <gti(<Exp>, <Exp>)>
+	IntOpExp.RGR_IOr    = <ori(<Exp>, <Exp>)>
+	IntOpExp.RGR_IXor   = <xori(<Exp>, <Exp>)>
+	IntOpExp.RGR_IAnd   = <andi(<Exp>, <Exp>)>	
+	
+	Exp = TypeExp
+	TypeExp.RGR_IsInt   = <int?(<Exp>)>
+	TypeExp.RGR_IsCont  = <cont?(<Exp>)>
+	TypeExp.RGR_IsFrame = <frame?(<Exp>)>
+	TypeExp.RGR_IsClos  = <closure?(<Exp>)>
+	
+	Exp = FrameExp
+	FrameExp.RGR_New    = <new(<IntOrExp>)>
+	FrameExp.RGR_New    = <new()>
+	FrameExp.RGR_NewRec = <new{<{Exp ","}+>}>
+	FrameExp.RGR_FSize  = <size(<Exp>)>
+	
+	ExpTerminal.RGR_Link  = <link(<Exp>, <PathOrExp>, <LinkRef>)>
+ 
+	ExpTerminal.RGR_Set   = <set(<PathOrExp>, <Exp>)>
+	ExpTerminal.RGR_Set   = <set(<Exp>, <NEPathOrExp>, <Exp>)>
+	FrameExp.RGR_Get      = <get(<PathOrExp>)>
+	FrameExp.RGR_Get      = <get(<Exp>, <PathOrExp>)>		
+	
+	ExpTerminal.RGR_Empty = <empty(<NEPathOrExp>)>
+	ExpTerminal.RGR_Empty = <empty(<Exp>, <NEPathOrExp>)>
+	FrameExp.RGR_IsEmpty  = <empty?(<NEPathOrExp>)>
+	FrameExp.RGR_IsEmpty  = <empty?(<Exp>, <NEPathOrExp>)>
+	
+	Exp = ContExp
+	OnReturnExp.RGR_ContRGet = <rget(<INTLZ>)>
+	OnReturnExp.RGR_ContRGet = <rget()>
+	ContExp.RGR_ContThis     = <cgetcurrent()>
+	ContExp.RGR_ContNew      = <cnew(<Exp>, <Label>, <IntOrExp>)>
+	ExpTerminal.RGR_ContTransfer = <transfer(<{Exp ","}+>, <ContOrExp>)>
+	
+	ExpTerminal.RGR_ContSet  = <cset(<ContOrExp>, <Exp>)>
+	ExpTerminal.RGR_ContSet  = <cset(<Exp>, <ContOrExp>, <Exp>)>
+	ContExp.RGR_ContGet      = <cget(<ContOrExp>)>
+	ContExp.RGR_ContGet      = <cget(<Exp>, <ContOrExp>)>
+	
+	
+	ControlTerminal.RGR_Return     = <return(<{Exp ","}*>)>
+	ControlTerminal.RGR_Yield      = <yield(<{Exp ","}+>, <Label>)>
+	ControlTerminal.RGR_JumpZ      = <jumpz(<Exp>, <Label>, <Label>)>
+	ControlTerminal.RGR_Jump       = <jump(<Label>)>
+	ControlTerminal.RGR_Call       = <call(<Exp>, <Label>, <Label>)>
+	ControlTerminal.RGR_Call       = <call(<Exp>, <Label>)>
+	ControlTerminal.RGR_TailCall   = <tailcall(<Exp>, <Label>)>
+	ControlTerminal.RGR_TailCall   = <tailcall(<Exp>)>
+	ControlTerminal.RGR_ContCall   = <ccall(<Exp>, <Label>)>
+	ControlTerminal.RGR_ContReturn = <cret(<Exp>)>
+	
+	ControlTerminal.RGR_Try        = <try(<Exp>, <Label>, <Exp>, <Label>, <Label>)>
+	ControlTerminal.RGR_Try        = <try(<Exp>, <Exp>, <Label>)>
+	ControlTerminal.RGR_Throw      = <throw(<Exp>)>
+	
+	ExpTerminal.RGR_ScopeExit       = <exitscope(<PathOrEmpty>)>
+	ExpTerminal.RGR_ScopeNew        = <newscope(<Exp>, <LinkRef>)>
+	ControlTerminal.RGR_ScopeExit   = <exitscope(<PathOrEmpty>, <Label>)>
+	ControlTerminal.RGR_ScopeNew    = <newscope(<Exp>, <LinkRef>, <Label>)>
+	ExpTerminal.RGR_ScopeSetCurrent = <mkcurrent(<Exp>)>
+	Exp.RGR_ScopeGetCurrent         = <getcurrent()>
+	
+	ExpTerminal.RGR_Print           = <print(<Exp>)>
+	ExpTerminal.RGR_PrintChar       = <printc(<Exp>)>
+	ExpTerminal.RGR_Debug           = <debug()>		
+	ExpTerminal.RGR_DebugKill       = <debug!()>
+	
+	Exp.RGR_StringLoad       = <sload(<STRING>)>
+	Exp.RGR_CharLoad         = <cload(<CHAR>)>	
+	
+//	Exp = ClosExp
+//    ClosExp.RGR_ClosNew      = <newc(<CopyPolicy>, <Label>, <IntOrExp>)>
+//    ClosExp.RGR_ClosNew      = <newc(<Label>, <IntOrExp>)>
+//    ClosExp.RGR_ClosToCont   = <cnew(<Exp>)>
+//    ClosExp.RGR_ClosUnpack   = <unpack(<Exp>)>
+  
+  
+	
+	IntOrExp = Exp
+	IntOrExp = INTLEZ
+	
+	PathOrExp = Exp
+	PathOrExp = PathOrEmpty
+	
+	NEPathOrExp = Exp
+	NEPathOrExp = Path
+	
+	ContOrExp = Exp
+	ContOrExp = ContRef
+	
+	
