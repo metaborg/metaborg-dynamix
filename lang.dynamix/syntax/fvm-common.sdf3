@@ -120,7 +120,6 @@ lexical restrictions
   INT           -/- [0-9]
   INTLZ         -/- [0-9]
   INTLEZ        -/- [0-9]
-  ID            -/- [a-zA-Z0-9\_]
   LIB           -/- [a-zA-Z0-9\_]
   LIBFUNC       -/- [a-zA-Z0-9\_]
   LABEL         -/- [A-Z0-9\_]

@@ -3,24 +3,25 @@ module fvm-roger
 imports
 	fvm-common
 	Dynamix
-  
+
 sorts RBlock context-free syntax
 
-	Instr.RGR_OnReturn = <<{RGRVar ","}+> \<- <OnReturnExp>>
+	Instr.RGR_OnReturn = <<{Var ","}+> \<- <OnReturnExp>>
 
 //	Instr.RGR_PureAssign = <<RGRVar> \<- <Exp> @inline>
 	Instr.RGR_Terminal = ExpTerminal
-	Instr.RGR_Assign = <<RGRVar> \<- <Exp>>
+	Instr.RGR_Assign = <<Var> \<- <Exp>>
 	
-	Instr = TemplateVar
+	Instr = StmtTemplateVar
+	
 	Instr = ControlTerminal
 	Instr.BlockBegin = <<Label>:>
-	RGRVar = LOCAL
-//	RGRVar = REGISTER
+	Instr.ContBegin = <<Label>:
+  local := <INTLEZ>>
 	
 sorts Exp context-free syntax
-	Exp = TemplateVar
-    Exp.RGR_Ref    = <<RGRVar>>
+	Exp = ExpTemplateVar
+    Exp.RGR_Ref    = <<Var>>
     Exp.RGR_REq    = <eqr(<Exp>, <Exp>)>
 	
 	Exp = IntOpExp
@@ -74,6 +75,7 @@ sorts Exp context-free syntax
 	ExpTerminal.RGR_ContSet  = <cset(<Exp>, <ContOrExp>, <Exp>)>
 	ContExp.RGR_ContGet      = <cget(<ContOrExp>)>
 	ContExp.RGR_ContGet      = <cget(<Exp>, <ContOrExp>)>
+    ContExp.RGR_ContUnpack   = <cunpack(<Exp>)>
 	
 	
 	ControlTerminal.RGR_Return     = <return(<{Exp ","}*>)>
@@ -105,12 +107,11 @@ sorts Exp context-free syntax
 	
 	Exp.RGR_StringLoad       = <sload(<STRING>)>
 	Exp.RGR_CharLoad         = <cload(<CHAR>)>	
-	
-//	Exp = ClosExp
-//    ClosExp.RGR_ClosNew      = <newc(<CopyPolicy>, <Label>, <IntOrExp>)>
-//    ClosExp.RGR_ClosNew      = <newc(<Label>, <IntOrExp>)>
-//    ClosExp.RGR_ClosToCont   = <cnew(<Exp>)>
-//    ClosExp.RGR_ClosUnpack   = <unpack(<Exp>)>
+
+    Exp = ClosExp
+//    ClosExp.RGR_ClosNew      = <newc(<Exp>, <CopyPolicy>, <Label>, <IntOrExp>)>
+    ClosExp.RGR_ClosNew      = <newc(<Exp>, <Label>, <IntOrExp>)>
+    ClosExp.RGR_ClosToCont   = <cnew(<Exp>)>
   
   
 	

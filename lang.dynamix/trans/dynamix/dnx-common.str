@@ -1,0 +1,15 @@
+module dnx-common
+
+signature
+  sorts DNX T
+  constructors    
+    DNX_AssignVar       : STRING -> DNX
+    DNX_SharedAssignVar : STRING -> DNX
+    
+    DNX_TemplateVar     : STRING -> DNX
+    DNX_TemplateVarInit : STRING -> DNX
+    DNX_TemplateVarLast : STRING -> DNX	
+    
+    
+    RGR_Program: STRING * STRING * [STRING] -> T
+    RGR_Block: STRING * STRING * STRING * [STRING] * STRING -> T

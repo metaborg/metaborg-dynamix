@@ -1,0 +1,134 @@
+module dnx-templates
+
+imports
+  dynamix/dnx-common
+  dynamix/dnx-stdlib
+  
+imports
+  signatures/fvm-roger-sig
+  signatures/fvm-common-sig  
+
+rules // Imported templates
+	template-std-exit-ok: args -> <dnx-apply-template(|args)> (template, [], [])
+	  with
+	    template := [
+	  		RGR_ILoad("0")
+	    ]
+	    
+    template-std-if: args -> <dnx-apply-template(|args)> (template, labels, [])
+	  with
+	    labels := ["THEN", "ELSE", "CONT"];
+	    template := [
+	  		RGR_JumpZ(DNX_TemplateVarLast(0), FVM_Label("ELSE"), FVM_Label("THEN")),
+	  		
+	  		FVM_Label("THEN"),
+	  		DNX_TemplateVar(1),
+	  		RGR_Jump(FVM_Label("CONT")),
+	  		
+	  		FVM_Label("ELSE"),
+	  		DNX_TemplateVar(2),
+	  		RGR_Jump(FVM_Label("CONT")),
+	  		
+	  		FVM_Label("CONT")
+	    ]
+	    
+	template-std-exp-if: args -> <dnx-apply-template(|args)> (template, labels, vars)
+	  with
+	    labels := ["THEN", "ELSE", "CONT"];
+	    vars := ["a"];
+	    template := [
+	        DNX_TemplateVarInit(0),
+	  		RGR_JumpZ(DNX_TemplateVarLast(0), FVM_Label("ELSE"), FVM_Label("THEN")),
+	  		
+	  		FVM_Label("THEN"),
+	  		DNX_TemplateVarInit(1),
+	  		RGR_Assign(DNX_SharedAssignVar("a"), DNX_TemplateVarLast(1)),
+	  		RGR_Jump(FVM_Label("CONT")),
+	  		
+	  		FVM_Label("ELSE"),
+	  		DNX_TemplateVarInit(2),
+	  		RGR_Assign(DNX_SharedAssignVar("a"), DNX_TemplateVarLast(2)),
+	  		RGR_Jump(FVM_Label("CONT")),
+	  		
+	  		FVM_Label("CONT"),
+	  		DNX_SharedAssignVar("a")
+	    ]
+	    
+	template-std-ineg: args -> <dnx-apply-template(|args)> (template, [], [])
+	  with
+	    template := [
+	  		RGR_INeg(DNX_TemplateVarLast(0))
+	    ]
+	    
+	template-std-iadd: args -> <dnx-apply-template(|args)> (template, [], [])
+	  with
+	    template := [
+	  		RGR_IAdd(DNX_TemplateVarLast(0), DNX_TemplateVarLast(1))
+	    ]
+	    
+	template-std-isub: args -> <dnx-apply-template(|args)> (template, [], [])
+	  with
+	    template := [
+	  		RGR_ISub(DNX_TemplateVarLast(0), DNX_TemplateVarLast(1))
+	    ]
+	    
+	template-std-imul: args -> <dnx-apply-template(|args)> (template, [], [])
+	  with
+	    template := [
+	  		RGR_IMul(DNX_TemplateVarLast(0), DNX_TemplateVarLast(1))
+	    ]
+	    
+	template-std-idiv: args -> <dnx-apply-template(|args)> (template, [], [])
+	  with
+	    template := [
+	  		RGR_IDiv(DNX_TemplateVarLast(0), DNX_TemplateVarLast(1))
+	    ]
+	    
+	template-std-ilt: args -> <dnx-apply-template(|args)> (template, [], [])
+	  with
+	    template := [
+	  		RGR_ILt(DNX_TemplateVarLast(0), DNX_TemplateVarLast(1))
+	    ]
+	    
+	template-std-igt: args -> <dnx-apply-template(|args)> (template, [], [])
+	  with
+	    template := [
+	  		RGR_IGt(DNX_TemplateVarLast(0), DNX_TemplateVarLast(1))
+	    ]
+	    
+	template-std-ieq: args -> <dnx-apply-template(|args)> (template, [], [])
+	  with
+	    template := [
+	  		RGR_IEq(DNX_TemplateVarLast(0), DNX_TemplateVarLast(1))
+	    ]
+	    
+	template-std-ior: args -> <dnx-apply-template(|args)> (template, [], [])
+	  with
+	    template := [
+	  		RGR_IOr(DNX_TemplateVarLast(0), DNX_TemplateVarLast(1))
+	    ]
+	    
+	template-std-iand: args -> <dnx-apply-template(|args)> (template, [], [])
+	  with
+	    template := [
+	  		RGR_IAnd(DNX_TemplateVarLast(0), DNX_TemplateVarLast(1))
+	    ]
+	    
+	template-std-true: args -> <dnx-apply-template(|args)> (template, [], [])
+	  with
+	    template := [
+	  		RGR_ILoad("1")
+	    ]
+	    
+	template-std-false: args -> <dnx-apply-template(|args)> (template, [], [])
+	  with
+	    template := [
+	  		RGR_ILoad("0")
+	    ]
+	    
+	template-std-int: args -> <dnx-apply-template(|args)> (template, [], [])
+	  with
+	    template := [
+	  		RGR_ILoad(DNX_TemplateVarLast(0))
+	    ]
+	

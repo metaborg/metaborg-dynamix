@@ -4,88 +4,152 @@ imports
   
   Common
   fvm-roger
+  fvm-common
 
 context-free start-symbols
   
   Spec
 
-context-free syntax
-  TemplateVar.DNX_TemplateVar = <[[<Var>]]>
-  Var.VarRef = ID
-  Var.Wildcard = WILDCARD
+context-free syntax // Templating
+  StmtTemplateVar.DNX_StmtTemplateVar = <[[<Var>]]>
+  ExpTemplateVar.DNX_ExpTemplateVar = <\<<Var>\>>
   
+  VarOrWildcard = Var
+  VarOrWildcard = Wildcard
+  
+  Var.DNX_VarRef = ID
+  Wildcard.DNX_Wildcard = WILDCARD
+  
+context-free syntax
   Spec.DNX_Spec = <
-<Natives?>
+<Templates*>
 <Rules+>
 >
 
-Natives.DNX_Natives = <
-native
-    <Template*>
+context-free syntax // Templates
+Templates.DNX_Templates = <templates
+    <{Template "\n"}+>
 >
+
 
 Template.DNX_Template = <
-<TEMPLATENAME>(<{Var ", "}*>)<Binds?>:
-	<InstrOrExp>
+<TEMPLATENAME>(<{TemplateVarDecl ","}*>)<TemplateLabelDecls?>:
+	<RGRStmtOrExp>
 >
 
-InstrOrExp.Instr = Instr*
-InstrOrExp.Exp = Exp
+TemplateVarDecl.DNXT_VarDecl = <<TemplateVarType> <Var>>
+TemplateVarType.DNXT_StmtType = <stmt>
+TemplateVarType.DNXT_StmtExpType = <stmt-exp>
+TemplateVarType.DNXT_ExpType = <exp>
 
-Binds.Binds = <with <{LabelBind ", "}+>>
-LabelBind.LabelBind = <Label(<Var>)>
+RGRStmtOrExp.DNXT_Stmts = Instr+ {prefer}
+RGRStmtOrExp.DNXT_Exp = Exp      {prefer}
+RGRStmtOrExp.DNXT_StmtsExp = Instr+ Exp
+
+TemplateLabelDecls.DNXT_LabelDecls = <with <{TemplateLabelDecl ", "}+>>
+TemplateLabelDecl.DNXT_LabelDecl = LABEL
+
+context-free syntax // Rules
 
 Rules.DNX_Rules = <
 rules
-    <Rule*>
+    <{Rule "\n"}*>
 >
 
-Rule.DNX_Rule = <<RULENAME>: <Term> ^<ContinuationVar> -\> <RuleOutput>
-<Where?>
+Rule.DNX_Rule = <<RULENAME>: <StrategoTerm> ^<ContinuationVar> -\> <RuleOutput>
+<RuleBody?>
 
 >
 
-Term.DNX_Term = <<CONSTRUCTOR>(<{Term ", "}*>)>
-Term.DNX_Var  = ID
-Term.DNX_List = <[<{Term ", "}*> <Tail?>]>
-Tail.DNX_Tail = <| <Term>>
-Tail.DNX_Last = <|| <{Term ", "}+>>
+StrategoTerm.DNX_Tuple = <(<{StrategoTerm ","}*>)>
+StrategoTerm.DNX_String = STRING
+StrategoTerm.DNX_Int = INT
+StrategoTerm.DNX_Term = <<NamedStrategoTerm?><CONSTRUCTOR>(<{StrategoTerm ", "}*>)>
+StrategoTerm.DNX_Var  = ID
+StrategoTerm.DNX_WildCard  = WILDCARD
+StrategoTerm.DNX_List = <[<{StrategoTerm ", "}*> <StrategoTail?>]>
+StrategoTail.DNX_Tail = <| <StrategoTerm>>
+StrategoTerm.DNX_Last = <|| <{StrategoTerm ", "}+>>
+NamedStrategoTerm.TermName = <<ID>@>
 
-ContinuationVar.Var = ControlFrame
-ContinuationVar.Tuple = <(<{ControlFrame ", "}+>)>
+ContinuationVar.DNXC_VarDecl  = Continuation
+ContinuationVar.DNXC_VarDecls = <(<{Continuation ", "}+>)>
+Continuation = ID
+Continuation.This = <this>
 
-RuleOutput.RuleOutput = <<Continuation> <With?>>
-Continuation.Default = <continue>
-Continuation = ControlFrame
+Sequence.DNX_Sequence = <<{DNXStmt ";"}+>>
+Sequence.DNX_Sequence2 = <<{DNXStmt ";"}+>;>
 
-With.With = <with <{Var ", "}+>>
+RuleOutput.DNX_RuleOutput = <<RuleContinuation> <With?>>
+RuleContinuation.Default = <continue>
+RuleContinuation.Ref = ID
 
-Where.Where = <where
-    <WhereAssign*>
-    <WhereCode?>
+With.With = <with <{DNXExp ", "}+>>
+
+RuleBody.DNX_RuleBody = <where
+    <Sequence>
 >
 
-WhereAssign.Assign = <<Var> := <DExp>>
-WhereAssign.Set = <resolved <Var> := <DExp>>
-WhereCode.Concat = <<{WhereCodeExp ";"}+>>
-WhereCodeExp = DExp
+DNXStmt.DNX_Exp = DNXExp
+DNXStmt.DNX_ExpAssign = <<Var> := <DNXExp>>
+DNXStmt.DNX_StmtAssign = <<Var> ::= <DNXExp>>
+DNXStmt.DNX_LookupAssign = <<Var> \<- <DNXExp>>
+DNXStmt.DNX_CallAssign = <<{Var ","}+> := call <DNXExp>>
 
-DExp.TemplateApp = <<TEMPLATENAME>(<{Var ", "}*>)>
-DExp.NewCF = <new <DExp> ^<ContinuationVar>>
-DExp.Sequence = <sequence <DApp>>
-DExp.Native = <native {
-  <InstrOrExp>
+
+DNXExp = <(<DNXExp>)> {bracket}
+DNXExp.DNX_Ref = ID
+DNXExp = DNXScopeExp
+
+DNXScopeExp = Scope
+Scope.DNX_InScope = <<LinkRef>{
+  <Sequence>
 }>
-DExp.Store = <store <DApp> @ <ControlFrame>>
-DExp.Resolve = <resolve(<Var>)>
-DExp.Get = <get(<DExp>)>
-DExp.Call = <call^<ControlFrame>>
-DExp.ResolveBlock = <resolve_block(<Var>)>
-DExp.RegisterBlock = <register_block(<Var>, <DExp>)>
-DExp.VarRef = Var
-DExp = DApp
-DApp.Recurse = <<RULENAME>:: <Term>^<ControlFrame>>
 
-ControlFrame.Var = <<Var>>
-ControlFrame.This = <this>
+DNXExp.TemplateApp = <template (<{TemplateArg ","}*>) in <TEMPLATENAME>>
+DNXExp.AnonTemplateApp = <template (<{AnonTemplateVarDecl ","}*>) in [[
+  <RGRStmtOrExp>
+]] <TemplateLabelDecls?>>
 
+DNXExp.SequenceApps = <sequence <RuleApp>>
+DNXExp = RuleApp
+DNXExp.NewCF = <new-cf <DNXExp> ^<ContinuationVar>>
+DNXExp.NewCLosure = <new-clos length(<DNXExp>) <DNXExp>>
+DNXExp.Store = <store <RuleApp> in <DNXExp>>
+DNXExp.Let = <let <RuleApp> in <Scope>>
+DNXExp.ResolveVar = <resolve <Var>>
+
+RuleApp.RuleApp = <<RULENAME> <DNXExpOrTerm> ^<ContinuationVar>>
+
+AnonTemplateVarDecl.VarDecl = <<TemplateVarDecl>: <TemplateArg>>
+TemplateArg.DNXT_Arg = <<Sequence>>
+
+DNXExpOrTerm = DNXExp
+DNXExpOrTerm = StrategoTerm
+
+//WhereAssign.Set = <resolved <Var> := <DExp>>
+//WhereCode.Concat = <<{WhereCodeExp ";"}+>>
+//WhereCodeExp = DExp
+//
+//DExp.TemplateApp = <<TEMPLATENAME>(<{Var ", "}*>)>
+//DExp.NewCF = <new <DExp> ^<ContinuationVar>>
+//DExp.Sequence = <sequence <DApp>>
+//DExp.Native = <native {
+//  <InstrOrExp>
+//}>
+//DExp.Store = <store <DApp> @ <ControlFrame>>
+//DExp.Resolve = <resolve(<Var>)>
+//DExp.Get = <get(<DExp>)>
+//DExp.Call = <call^<ControlFrame>>
+//DExp.ResolveBlock = <resolve_block(<Var>)>
+//DExp.RegisterBlock = <register_block(<Var>, <DExp>)>
+//DExp.VarRef = Var
+//DExp.Scope = <<LinkRef>{
+//    <WhereCode>
+//}>
+//DExp = DApp
+//DApp.Recurse = <<RULENAME>:: <Term>^<ControlFrame>>
+//
+//ControlFrame.Var = <<Var>>
+//ControlFrame.This = <this>
+//
