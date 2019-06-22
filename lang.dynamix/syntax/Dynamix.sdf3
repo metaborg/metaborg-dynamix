@@ -95,6 +95,8 @@ DNXStmt.DNX_ExpAssign = <<Var> := <DNXExp>>
 DNXStmt.DNX_StmtAssign = <<Var> ::= <DNXExp>>
 DNXStmt.DNX_LookupAssign = <<Var> \<- <DNXExp>>
 DNXStmt.DNX_CallAssign = <<{Var ","}+> := call <DNXExp>>
+DNXStmt.DNX_RegisterSlots = <register-slots [<{Var ","}+>]>
+//DNXStmt.DNX_RegisterFunc = <assign-function [<{DNXExp ","}+>]>
 
 
 DNXExp = <(<DNXExp>)> {bracket}

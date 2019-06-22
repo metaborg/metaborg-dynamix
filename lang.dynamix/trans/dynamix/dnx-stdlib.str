@@ -1,12 +1,27 @@
 module dnx-stdlib
 
 imports
+  nabl2/api
   dynamix/dnx-common
   
 imports
   signatures/fvm-roger-sig
   signatures/fvm-common-sig
 
+rules
+    new-static: (name, val) -> val
+      with
+        <set-counter> (name, val)
+        
+    get-static: name -> val 
+      where
+        val := <get-counter> name;
+        <set-counter> (name, val)
+        
+    update-static: (name, val) -> val 
+      where
+        <set-counter> (name, val)
+      
 // Dynamix library functions
 rules // Templating
     dnx-apply-template(|args): (template, labels, vars) -> templated
@@ -148,7 +163,7 @@ rules // Actual wildcard application
    
 
 rules // Helper functions 
-    dnx-sequence(s): exps -> <flatten-list; mapconcat(s)> exps
+    dnx-sequence(s): exps -> <flatten-list; map(s); concat> exps
     dnx-next-local-assign-var:  _ -> DNX_AssignVar(<newname> "l_")
     dnx-next-shared-assign-var: _ -> DNX_SharedAssignVar(<newname> "s_")
     
@@ -175,11 +190,47 @@ rules // Helper functions
 	    init_instrs := <zip; map((\(i1, i2) -> <flatten-list> [i1, i2]\)); flatten-list> (init_instr, <map(s)> init_exp);
 	    last_instr_exp := <compile-s> last
 
-    dnx-resolve-name: name -> path
+    dnx-register-termidx(|namespace): list -> <map-with-index(debug(!"bhui"); dnx-store-name-idx(|namespace))> <debug>list
+        
+    dnx-store-name-idx(|namespace): (idx, term) -> idx
+      with
+        hashmap := <dnx-get-idx-map>;
+        a       := <nabl2-get-ast-analysis> term;
+        ref-occ := <nabl2-mk-occurrence(|namespace)> term;
+        TermIndex(termfile, termidx) := <nabl2-get-occurrence-index> ref-occ;
+        _ := <hashtable-put(|termidx, <dec>idx)> hashmap
+        
+    dnx-resolve-name(|namespace): name -> FVM_Path(path)
+      with
+        a       := <nabl2-get-ast-analysis> name;
+        ref-occ := <nabl2-mk-occurrence(|namespace)> name;
+        path    := <dnx-resolve-name-path(|namespace, a)> ref-occ
+        
+    dnx-resolve-name-path(|namespace, a): ref-occ -> fvm_path 
       where
-        idx := 1;	// TODO
-//        path := <framevm-path-from-nabl2> (name, "Var", "index")
-        path := []
+        (dec-occ, path) := <nabl2-get-resolved-name(|a)> ref-occ
+      with
+        (path_body, path_end) := <split-init-last> path;
+        fvm_path     := <concat>[<map(dnx-from-nabl2-path)> path_body, [<dnx-resolve-name-slot> dec-occ]]
+    
+    dnx-resolve-name-path(|namespace, a): ref-occ -> fvm_path 
+      where
+        fvm_path := [<dnx-resolve-name-slot> ref-occ]
+        
+    dnx-resolve-name-slot: occ -> FVM_Slot(<int-to-string> idx)
+      where 
+        TermIndex(termfile, termidx) := <nabl2-get-occurrence-index> occ;
+        idx-map := <dnx-get-idx-map>;
+        idx := <hashtable-get(|termidx)> <dnx-get-idx-map>
+    
+    dnx-init-idx-map: e -> e
+      where
+        <new-static> ("IndexMap", <new-hashtable>)
+        
+    dnx-get-idx-map: _ -> <get-static> "IndexMap"
+    
+    dnx-from-nabl2-path: E(scope, lbl) -> FVM_Link(<get-constructor> lbl)
+    
 
 rules // Validation rules
     dnx-validate = dnx-check-unbound-vars
