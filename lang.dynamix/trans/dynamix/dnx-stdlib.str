@@ -103,7 +103,11 @@ rules // Register allocation
     dnx-is-jump-lbl-f: RGR_ScopeExit(_, FVM_Label(lbl)) -> lbl
     dnx-is-jump-lbl-f: RGR_ScopeNew(_,_,FVM_Label(lbl)) -> lbl
     
-rules // Actual wildcard application    
+rules // Actual wildcard application  
+    dnx-init-static-maps: e -> e
+      with
+        <new-static> ("func-map", <new-hashtable>)
+      
     dnx-allocate-local-wildcards-instr: (instrs, binds) -> <foldl(dnx-allocate-local-wildcards-instr-fold)> (instrs, ([], binds))
     
     dnx-allocate-local-wildcards-instr-fold: (Some(RGR_OnReturn(vars, val)), (instrs, binds)) -> (<flatten-list> [instrs, Some(RGR_OnReturn(vars', val))], binds')
@@ -154,19 +158,6 @@ rules // Helper functions
     dnx-next-shared-assign-var: _ -> DNX_SharedAssignVar(<newname> "s_")
     
     dnx-execute-in-scope(|lbl, size): term -> <flatten-list> [RGR_Stmt(RGR_ScopeNew(RGR_New(<int-to-string> size), FVM_Link(lbl))), term, RGR_Stmt(RGR_ScopeExit(FVM_Path([FVM_Link(lbl)])))]
-  
-    dnx-cont-store(compile-s| cont): args -> <dnx-frame-store(compile-s| RGR_ContUnpack(cont))> args
-    dnx-cont-store-named(compile-s| cont): args -> <dnx-frame-store-named(compile-s| RGR_ContUnpack(cont))> args
-    
-    dnx-frame-store(compile-s| frame): args -> <flatten-list> [store_instrs, a_instrs, stored_exps]
-      with
-        (store_instrs, store_exps) := <unzip> <map(compile-s; split-init-last)> args;
-        var_a := <dnx-next-local-assign-var>;
-	  	a_instrs := RGR_Assign(var_a, frame);
-	    
-        stored_exps := <map-with-index(\(idx, exp) -> RGR_Stmt(RGR_Set(var_a, FVM_Path([FVM_Slot(<int-to-string><dec> idx)]),exp))\)> store_exps
-    
-    dnx-frame-store-named(compile-s| frame): args -> <fail>// TODO
     
     dnx-assign-sequence(compile-s): exps -> <dnx-exp-sequence-with(compile-s, \c -> RGR_Assign(var, c)\)> with var := <dnx-next-shared-assign-var>
     dnx-exp-sequence-with(compile-s, s): exps -> <flatten-list> [init_instrs, last_instr_exp]
@@ -175,67 +166,43 @@ rules // Helper functions
 	    (init_instr, init_exp) := <unzip> <map(compile-s; split-init-last)> init;	
 	    init_instrs := <zip; map((\(i1, i2) -> <flatten-list> [i1, i2]\)); flatten-list> (init_instr, <map(s)> init_exp);
 	    last_instr_exp := <compile-s> last
-
-    dnx-register-termidx(|namespace): list -> <map-with-index(dnx-store-name-idx(|namespace))> list
-    
-    dnx-store-name(|namespace): name -> idx
-      with
-        a := <nabl2-get-ast-analysis> name;
-        occ := <nabl2-mk-occurrence(|namespace)> name;
-        
-        scope := <nabl2-get-decl-scope(|a)> occ;
-        occs := <nabl2-get-scope-decls(|a); filter(?(Occurrence(Namespace(namespace), _, _)))> scope;
-		idx := <find-index(?(Occurrence(_, name, _)))> occs;
-
-        TermIndex(termfile, termidx) := <nabl2-get-occurrence-index> occ;
-        hashmap := <dnx-get-idx-map>;
-        _ := <hashtable-put(|termidx, idx)> hashmap
-         
-    dnx-store-name-idx(|namespace): (idx, term) -> idx
-      with
-        hashmap := <dnx-get-idx-map>;
-        a       := <nabl2-get-ast-analysis> term;
-        ref-occ := <nabl2-mk-occurrence(|namespace)> term;
-        TermIndex(termfile, termidx) := <nabl2-get-occurrence-index> ref-occ;
-        _ := <hashtable-put(|termidx, <dec>idx)> hashmap
         
     dnx-resolve-name(|namespace): name -> FVM_Path(path)
       with
         a       := <nabl2-get-ast-analysis> name;
         ref-occ := <nabl2-mk-occurrence(|namespace)> name;
-        path    := <dnx-resolve-name-path(|namespace, a)> ref-occ
+        path    := <dnx-resolve-name-path(|namespace, name,  a)> ref-occ
         
-    dnx-resolve-name-path(|namespace, a): ref-occ -> fvm_path 
+    dnx-resolve-name-path(|namespace, name, a): ref-occ -> fvm_path 
       where
         (dec-occ, path) := <nabl2-get-resolved-name(|a)> ref-occ
       with
         (path_body, path_end) := <split-init-last> path;
-        fvm_path     := <concat>[<map(dnx-from-nabl2-path)> path_body, [<dnx-resolve-name-slot> dec-occ]]
+        fvm_path     := <concat>[<map(dnx-from-nabl2-path)> path_body, [<dnx-resolve-name-slot(|namespace, name, a)> dec-occ]]
     
-    dnx-resolve-name-path(|namespace, a): ref-occ -> fvm_path 
+    dnx-resolve-name-path(|namespace, name, a): ref-occ -> fvm_path 
       where
-        fvm_path := [<dnx-resolve-name-slot> ref-occ]
+        fvm_path := [<dnx-resolve-name-slot(|namespace, name, a)> ref-occ]
         
-    dnx-resolve-name-slot: occ -> FVM_Slot(<int-to-string> idx)
+    dnx-resolve-name-slot(|namespace, name, a): occ -> FVM_Slot(<int-to-string> idx)
       with 
         TermIndex(termfile, termidx) := <nabl2-get-occurrence-index> occ;
-        idx-map := <dnx-get-idx-map>
-      where
-        idx := <hashtable-get(|termidx)> <dnx-get-idx-map>
+        scope := <nabl2-get-decl-scope(|a)> occ;
+        occs := <nabl2-get-scope-decls(|a); filter(?(Occurrence(Namespace(namespace), _, _)))> scope;
+		idx := <find-index(dnx-is-occurrence-with-name(|name))> occs
     
-    dnx-resolve-name-slot: occ -> FVM_Slot("undefined")
-      where 
-        TermIndex(termfile, termidx) := <nabl2-get-occurrence-index> occ;
-        <debug(!"Definition not registered for: ")> occ
-    
-    dnx-init-idx-map: e -> e
-      where
-        <new-static> ("IndexMap", <new-hashtable>)
-        
-    dnx-get-idx-map: _ -> <get-static> "IndexMap"
+    dnx-is-occurrence-with-name(|req-name): occ@Occurrence(_, name, _) -> occ where <equal> (<strip-annos> req-name, <strip-annos> name)
     
     dnx-from-nabl2-path: E(scope, lbl) -> FVM_Link(<get-constructor> lbl)
     
+    dnx-store-in-frame(c|frame): vals -> <concat> vals_instr
+      with
+         vals_instr := <map-with-index(dnx-store-in-frame-(c|frame))> vals
+         
+    dnx-store-in-frame-(c|frame): (idx, term) -> <flatten-list> [instr, assign] 
+	  with 
+	    (instr, val) := <split-init-last> <c> term;
+	    assign := RGR_Stmt(RGR_Set(frame, FVM_Path([FVM_Slot(<int-to-string> <dec> idx)]), val))
 
 rules // Validation rules
     dnx-validate = dnx-check-unbound-vars
