@@ -1,0 +1,64 @@
+rules
+
+init: Program(stmts) ^(c, x) -> c with a
+  where
+    a := template () in __ExitOK;
+    sequence stmt stmts ^this
+    
+rules
+stmt: Assign(var, val) ^(c,x) -> continue
+  where
+    val' := exp val;
+    var <- val'
+    
+stmt: FuncDef(fname, args, body) ^(c, x) -> continue
+  where
+    register fname as (
+      sequence stmt body ^(c', x')	// Where do c' and x' come from?
+    )
+      
+stmt: Try(try_body, catch_body) ^(c, x) -> continue
+ where
+    sequence exp catch_body ^(c, x);
+    instr ::= sequence exp catch_body; call this ^catch_cf
+    catch_cf := new-cf inst ^(c, x, this);	// Inconsistent with other sequence calls
+    try_cf := new-cf (sequence exp try_body; call this) ^(c, h, this);      // this -> this (implicit?!), should there be an extra ^(c, x, n)?
+    call try_cf
+    
+stmt: Return(exp) ^(c, x, ...) -> c with val
+  where
+    val := exp exp ^(c, x)
+    call (get c) with val
+    
+stmt: Throw(exp) ^(c, x) -> x with val
+  where
+    val := exp exp ^(c, x)
+
+rules
+exp: Ref(name) ^_ -> val
+  where
+    val := resolve name
+    
+ exp: Num(v) ^(c, x) -> continue with val
+   where
+     val := template (v) in __int
+     
+     
+exp: Call(func, args) ^(c, x) -> continue with res
+  where
+    cf := new-cf resolve func ^(this, x);   // How does it infer that these work in the same data frame
+    sequence store-arg args ^(c, x);		// They might be/become two separate instances of the same scope
+    										// Could introduce explicit scope mentioning and passing
+    										// that could be left out when not needed
+    										// But this partially defeats the implicit scoping we want
+    										// Could we assume a scope ID within a rule implies the same instance of that scope
+    val := call cf
+    
+    
+rules
+store-arg: Bind(name, exp) ^(c,x) -> continue
+  where
+    val := exp exp ^(c,x);
+    name <- val
+    
+     
