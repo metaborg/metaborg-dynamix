@@ -11,12 +11,13 @@ context-free start-symbols
   Spec
 
 context-free syntax // Templating
-  StmtTemplateVar.DNX_StmtTemplateVar = <[[<Var>]]>
-  ExpTemplateVar.DNX_ExpTemplateVar = <\<<Var>\>>
+  StmtTemplateVar.DNX_StmtTemplateVar = <[[<TVar>]]>
+  ExpTemplateVar.DNX_ExpTemplateVar = <\<<TVar>\>>
   
   VarOrWildcard = Var
   VarOrWildcard = Wildcard
   
+  TVar.DNX_VarRef = ID
   Var.DNX_VarRef = ID
   Wildcard.DNX_Wildcard = WILDCARD
   
@@ -37,7 +38,7 @@ Template.DNX_Template = <
 	<RGRStmtOrExp>
 >
 
-TemplateVarDecl.DNXT_VarDecl = <<TemplateVarType> <Var>>
+TemplateVarDecl.DNXT_VarDecl = <<TemplateVarType> <TVar>>
 TemplateVarType.DNXT_StmtType = <stmt>
 TemplateVarType.DNXT_StmtExpType = <stmt-exp>
 TemplateVarType.DNXT_ExpType = <exp>
@@ -77,6 +78,7 @@ ContinuationVar.DNXC_VarDecls = <(<{Continuation ", "}+>)>
 Continuation = ID
 Continuation.This = <this>
 
+Sequence = <(<Sequence>)> {bracket}
 Sequence.DNX_Sequence = <<{DNXStmt ";"}+>>
 Sequence.DNX_Sequence2 = <<{DNXStmt ";"}+>;>
 
@@ -120,6 +122,7 @@ DNXExp.NewCLosure = <new-clos length(<DNXExp>) <DNXExp>>
 DNXExp.Store = <store <RuleApp> in <DNXExp>>
 DNXExp.Let = <let <RuleApp> in <Scope>>
 DNXExp.ResolveVar = <resolve <Var>>
+DNXExp.RegisterFunc = <register <Var> as <Sequence>>
 
 RuleApp.RuleApp = <<RULENAME> <DNXExpOrTerm> ^<ContinuationVar>>
 

@@ -9,7 +9,7 @@ sorts RBlock context-free syntax
 	Instr.RGR_OnReturn = <<{Var ","}+> \<- <OnReturnExp>>
 
 //	Instr.RGR_PureAssign = <<RGRVar> \<- <Exp> @inline>
-	Instr.RGR_Terminal = ExpTerminal
+	Instr.RGR_Stmt = ExpTerminal
 	Instr.RGR_Assign = <<Var> \<- <Exp>>
 	
 	Instr = StmtTemplateVar

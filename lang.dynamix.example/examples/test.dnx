@@ -46,7 +46,7 @@ init: Program([stmts || last]) ^(c, x) -> c with a
 stmt: Assign(Ref(name), exp) ^ (c, x) -> continue
   where
     v := expr:: exp ^this
-//    resolved name := v
+    resolved name := v
     
 stmt: FunDef(Ref(func_name), args, body) ^ (c, x) -> continue
   where
@@ -55,9 +55,8 @@ stmt: FunDef(Ref(func_name), args, body) ^ (c, x) -> continue
 exp: Call(Ref(func_name), args) ^ (c, x) -> continue
   where
 	b := new resolve_block(func_name)^(this, x)
-	arg := store exp:: args ^this @b
+	let exp:: args ^(c,x) in b
 	func := call^b
-    arg; func; rget
     
 stmt: Return(exp) ^(c, x) -> c with val
   where
@@ -67,17 +66,29 @@ exp: Ref(name) ^ _ -> continue with val
   where
     val := get(resolve(name))
     
-exp: Plus(exp1, exp2) ^ _ -> continue
+exp: Plus(exp1, exp2) ^ cs -> continue with val
   where
-    v1  := exp:: exp1 ^ this
-    v2  := exp:: exp2 ^ this
-    __Iadd(v1, v2)
+    v1  := exp:: exp1 ^ cs
+    v2  := exp:: exp2 ^ cs
+    val := __Iadd(v1, v2)
      
 exp: Int(v) ^ _ -> continue with val
   where
     val := __Int(v)
  
- 
+exp: Let(binds, body) ^cs -> continue with val
+  where
+//    store exp::body^cs in P{
+//      val <- sequence exp::body ^cs
+//    }
+	  s := P{
+	      val <- sequence exp::body ^cs
+	    }
+	    
+      P{
+        store exp::body^cs in s
+	  }
+    
  
 // breaks (which label?)
 // returns in if expression -> dead code
