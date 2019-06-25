@@ -104,9 +104,15 @@ rules // Register allocation
     dnx-is-jump-lbl-f: RGR_ScopeNew(_,_,FVM_Label(lbl)) -> lbl
     
 rules // Actual wildcard application  
-    dnx-init-static-maps: e -> e
+    dnx-init-maps: e -> e
       with
         <new-static> ("func-map", <new-hashtable>)
+    
+    dnx-set-slot-namespaces: namespaces -> namespaces
+      with
+        <new-static> ("slot-namespaces", namespaces)
+        
+    dnx-get-slot-namespaces: _ -> <get-static> "slot-namespaces"
       
     dnx-allocate-local-wildcards-instr: (instrs, binds) -> <foldl(dnx-allocate-local-wildcards-instr-fold)> (instrs, ([], binds))
     
@@ -188,10 +194,14 @@ rules // Helper functions
       with 
         TermIndex(termfile, termidx) := <nabl2-get-occurrence-index> occ;
         scope := <nabl2-get-decl-scope(|a)> occ;
-        occs := <nabl2-get-scope-decls(|a); filter(?(Occurrence(Namespace(namespace), _, _)))> scope;
-		idx := <find-index(dnx-is-occurrence-with-name(|name))> occs
+        occs := <nabl2-get-scope-decls(|a); filter(dnx-is-valid-occurrence(|<dnx-get-slot-namespaces>))> scope;
+		idx := <find-index(dnx-is-occurrence-match(|namespace, name))> occs
     
-    dnx-is-occurrence-with-name(|req-name): occ@Occurrence(_, name, _) -> occ where <equal> (<strip-annos> req-name, <strip-annos> name)
+    dnx-is-valid-occurrence(|namespaces): occ@Occurrence(Namespace(ns), _, _) -> occ
+      where
+        <elem> (ns, namespaces)
+        
+    dnx-is-occurrence-match(|req-ns, req-name): occ@Occurrence(Namespace(req-ns), name, _) -> occ where <equal> (<strip-annos> req-name, <strip-annos> name)
     
     dnx-from-nabl2-path: E(scope, lbl) -> FVM_Link(<get-constructor> lbl)
     
