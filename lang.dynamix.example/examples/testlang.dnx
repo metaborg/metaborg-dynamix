@@ -13,7 +13,7 @@ stmt: Assign(var, val) ^(c,x) -> continue
     
 stmt: FuncDef(fname, args, body) ^(c, x) -> continue
   where
-    register fname as (
+    function fname as (
       sequence stmt body ^(c', x')	// Where do c' and x' come from?
     )
       

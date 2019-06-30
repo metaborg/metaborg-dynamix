@@ -116,7 +116,7 @@ sorts Exp context-free syntax
   
 	
 	IntOrExp = Exp
-	IntOrExp = INTLEZ
+	IntOrExp.RGR_IntVal = INTLEZ
 	
 	PathOrExp = Exp
 	PathOrExp = PathOrEmpty

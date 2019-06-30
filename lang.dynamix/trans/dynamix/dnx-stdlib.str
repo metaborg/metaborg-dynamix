@@ -195,7 +195,7 @@ rules // Helper functions
         TermIndex(termfile, termidx) := <nabl2-get-occurrence-index> occ;
         scope := <nabl2-get-decl-scope(|a)> occ;
         occs := <nabl2-get-scope-decls(|a); filter(dnx-is-valid-occurrence(|<dnx-get-slot-namespaces>))> scope;
-		idx := <find-index(dnx-is-occurrence-match(|namespace, name))> occs
+		idx := <find-index(dnx-is-occurrence-match(|namespace, name))> <debug> occs
     
     dnx-is-valid-occurrence(|namespaces): occ@Occurrence(Namespace(ns), _, _) -> occ
       where

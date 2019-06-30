@@ -8,5 +8,5 @@ rules
 
   init ^ (s) := new s.
 
-  [[ DNX_Spec(_,_) ^ (s) ]].
+  [[ DNX_Spec(_) ^ (s) ]].
 
