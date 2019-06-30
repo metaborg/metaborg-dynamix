@@ -1,0 +1,67 @@
+rules
+
+init: Program(stmts) cf:(c, x)^(s) -> c with exit
+  where
+    sequence stmt stmts in cf^(s);
+    exit := prim _exitOK()
+    
+rules
+stmt: Assign(var, val) cf^(s) -> cf^(d)
+  where
+    val' := exp val in cf^(s);
+    new d; d ---> s;
+    var^(d) <- val'
+
+
+stmt: FuncDef(fname, args, body) cf^(s) -> cf^(s)
+  where
+    new fun-s; fun-s ---> scope-of fname;
+    new-fun ^(fun-s) from fname [[ sequence stmt body in bcf^(bs) ] bcf^(bs)]
+   
+      
+stmt: Try(try_body, catch_body) cf:(c, x)^(s) -> cf^(s)
+ where
+   new catch-s; catch-s ---> s;
+   new try-s;   try-s   ---> s;
+   
+   new-cf catch_cf:(c, x, cf)^(catch-s) 
+     [[ sequence stmt catch_body in ccf^(cs); return n ] 
+       ccf:(_,_, n)^(cs)
+     ];
+     
+   new-cf try_cf:(c, catch_cf, cf)^(try-s) 
+     [[ sequence stmt try_body in tcf^(ts); return n ] 
+       tcf:(_,_, n)^(ts)
+     ];
+   call try_cf
+    
+stmt: Return(exp) cf:(c, x)^(s) -> c with val
+  where
+    val := exp exp in cf^(s);
+    
+stmt: Throw(exp) cf:(c, x)^(s) -> x with val
+  where
+    val := exp exp in cf^(s)
+
+rules
+exp: Ref(name) cf^(s) -> cf^(s) with val
+  where
+    val := resolve name
+    
+ exp: Num(v) cf^(s) -> cf with val
+   where
+     val := prim _int(v)
+     
+     
+exp: Call(func, args) cf:(c,x)^(s) -> cf^(s) with res
+  where
+    new-cf func-cf:(cf, x)^(fun-s) from-func func;
+    sequence store-arg args in cf^(s, fun);		
+    res := call func-cf
+    
+rules
+store-arg: Bind(name, exp) cf^(s, fun-s) -> cf^(s)
+  where
+    val := exp exp in cf^(s);
+    name^(fun-s) <- val
+     
