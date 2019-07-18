@@ -1,0 +1,38 @@
+module analysis/common
+  
+signature
+    namespaces Def Var LinkOrCont Module
+    
+    sorts Type
+    constructors
+     ExpT   : Type		// TODO extend this with the type inside the expression
+     InstrT : Type
+     TermT  : Type
+     DefT   : Type * list(Type) * Type -> Type
+     PathT  : Type
+     PathOrExpT : Type
+     LinkT  : Type
+     IntT   : Type
+     ContT  : Type
+     
+     ReturnT: Type
+     CodeT : Type
+     
+     ParamT: list(Type) * Type -> Type
+     NoParamT: Type
+     
+    
+    relations
+     reflexive, transitive, anti-symmetric sub : Type * Type {
+      [+sub]
+     }
+     
+rules
+  initTypes [[ _ ^(_) ]] :=
+  	ExpT()   <sub! CodeT(),
+  	InstrT() <sub! CodeT(),
+  	PathT()  <sub! PathOrExpT(),
+  	ExpT()   <sub! PathOrExpT(),
+  	IntT()   <sub! TermT(),
+  	ReturnT() <sub! ExpT(),
+  	ReturnT() <sub! InstrT().

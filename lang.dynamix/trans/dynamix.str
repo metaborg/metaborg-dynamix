@@ -14,3 +14,9 @@ rules // Debugging
     with
       filename := <guarantee-extension(|"aterm")> path
     ; result   := node
+  
+  debug-show-analyzed-aterm:
+    (node, _, _, path, project-path) -> (filename, result)
+    with
+      filename := <guarantee-extension(|"aterm")> path
+    ; result   := node

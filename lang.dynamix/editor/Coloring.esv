@@ -5,30 +5,17 @@ imports
   completion/colorer/Dynamix-cc-esv
 
 colorer
-  green        = 0 80 0
   green_italic = 0 80 0 italic
-  green_bold   = 0 80 0 bold
   
-  rulename     = 15 30 140
-  templateVar  = 200 80 0 bold
-  template     = 0 80 0 italic
+  rulename     = 15 30 140 bold
+  primitive    = 200 80 0 bold
+  type         = 0 80 0 bold italic
   
   
   black_bold = 0 0 0 bold
   
-//  keyword: 153 51 153
-////  identifier: black
-////  string: 177 47 2
-////  number: 17 131 22
-//  TK_OPERATOR: black
   layout     : green_italic
   
-  TEMPLATENAME: rulename
-  RULENAME:     rulename
-  
-  LABEL: black_bold
-  
-  RGRStmtOrExp:    template
-  StmtTemplateVar: templateVar
-  ExpTemplateVar:  templateVar
-  TVar:  templateVar
+  DEFNAME:     rulename
+  PRIMNAME:    primitive
+  Type._:      type

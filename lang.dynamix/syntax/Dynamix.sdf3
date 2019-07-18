@@ -1,197 +1,68 @@
 module Dynamix
 
 imports
-  
   Common
-  fvm-roger
-  fvm-common
 
-context-free start-symbols
-  
-  Spec
+context-free start-symbols 
+  Module
 
-//context-free syntax // Templating
-//  StmtTemplateVar.DNX_StmtTemplateVar = <[[<TVar>]]>
-//  ExpTemplateVar.DNX_ExpTemplateVar = <\<<TVar>\>>
-//  
-//  VarOrWildcard = Var
-//  VarOrWildcard = Wildcard
-//  
-//  TVar.DNX_TVarRef = ID
-//  Var.DNX_VarRef = ID
-//  Wildcard.DNX_Wildcard = WILDCARD
-  
 context-free syntax
-  Spec.DNX_Spec = <
-<Rules+>
+
+ Module.Module = <
+  module <ID> 
+   <Imports*>
+   <Definitions*>
+ >
+ 
+ Imports.Imports = <imports
+  <Import*>
 >
-//  Spec.DNX_Spec = <
-//<Templates*>
-//<Rules+>
-//>
+ Import.Import = ID
 
-//context-free syntax // Templates
-//Templates.DNX_Templates = <templates
-//    <{Template "\n"}+>
-//>
-//
-//
-//Template.DNX_Template = <
-//<TEMPLATENAME>(<{TemplateVarDecl ","}*>)<TemplateLabelDecls?>:
-//	<RGRStmtOrExp>
-//>
-//
-//TemplateVarDecl.DNXT_VarDecl = <<TemplateVarType> <TVar>>
-//TemplateVarType.DNXT_StmtType = <stmt>
-//TemplateVarType.DNXT_StmtExpType = <stmt-exp>
-//TemplateVarType.DNXT_ExpType = <exp>
-//
-//RGRStmtOrExp.DNXT_Stmts = Instr+ {prefer}
-//RGRStmtOrExp.DNXT_Exp = Exp      {prefer}
-//RGRStmtOrExp.DNXT_StmtsExp = Instr+ Exp
-//
-//TemplateLabelDecls.DNXT_LabelDecls = <with <{TemplateLabelDecl ", "}+>>
-//TemplateLabelDecl.DNXT_LabelDecl = LABEL
-
-context-free syntax // Rules
-
-Rules.DNX_Rules = <
-rules
-    <{Rule "\n"}*>
+ Definitions.Defs = <rules
+  <Definition*>
 >
-
-Rule.DNX_Rule = <<RULENAME>: <StrategoTerm> <ContinuationVar><WithContinuations?><InScope?> -\> <RuleOutput>
-<RuleBody?>
-
->
-
-StrategoTerm.DNX_Tuple = <(<{StrategoTerm ","}*>)>
-StrategoTerm.DNX_String = STRING
-StrategoTerm.DNX_Int = INT
-StrategoTerm.DNX_Term = <<NamedStrategoTerm?><CONSTRUCTOR>(<{StrategoTerm ", "}*>)>
-StrategoTerm.DNX_Var  = ID
-StrategoTerm = Wildcard
-StrategoTerm.DNX_List = <[<{StrategoTerm ", "}*> <StrategoTail?>]>
-StrategoTail.DNX_Tail = <| <StrategoTerm>>
-StrategoTerm.DNX_Last = <|| <{StrategoTerm ", "}+>>
-NamedStrategoTerm.TermName = <<ID>@>
-
-Wildcard.Wildcard = WILDCARD
-ContinuationVar = ID
-ContinuationVar = Wildcard
-ScopeVar = ID
-ScopeVar = Wildcard
-WithContinuations.WithContinuations = <:(<{ContinuationVar ","}+>)>
-
-Sequence = <(<Sequence>)> {bracket}
-Sequence.DNX_Sequence  = <<{DNXStmt ";"}+>>
-Sequence.DNX_Sequence2 = <<{DNXStmt ";"}+>;>
-
-RuleOutput.DNX_RuleOutput = <<ContinuationVar> <InScope?> <With?>>
-InScope.DNX_InScope = <^(<{ScopeVar ","}+>)>
-With.With = <with <{ID ", "}+>>
-
-RuleBody.DNX_RuleBody = <where
-    <Sequence>
->
-
-DNXExpOrTerm = DNXExp
-DNXExpOrTerm = StrategoTerm
-
-DNXStmt.DNX_Exp = <<DNXExp>>
-DNXStmt.DNX_ExpAssign = <<ID> := <DNXExp>>
-DNXStmt.DNX_StmtAssign = <<ID> ::= <InlineSequence>>
-DNXStmt.DNX_LookupAssign = <<ID><InScope?> \<- <DNXExp>>
-DNXStmt.DNX_Resolve = <<ID><InScope?> -\> <ID>>
-DNXStmt.DNX_SlotAssign = <<ID>[<IntOrExp>] \<- <DNXExp>>
-IntOrExp = INTLEZ
-IntOrExp = DNXExp
-
-InlineSequence.DNX_InlineSequence = <[[ <Sequence> ] <ContinuationVar><WithContinuations?><InScope>]>
-DNXStmt.DNX_NewFrame = <new <ID>>
-DNXStmt.DNX_NewClosure = <new-clos <ID><InScope> <InlineSequence>>
-DNXStmt.DNX_NewCF = <new-cf <ContinuationVar><WithContinuations><InScope> <InlineSequence>>
-DNXStmt.DNX_NewCFFromClos = <new-cf <ContinuationVar><WithContinuations><InScope> from-clos <DNXExp>>
-DNXStmt.DNX_NewCFFromFunc = <new-cf <ContinuationVar><WithContinuations><InScope> from-func <DNXExp>>
-DNXStmt.DNX_NewFun = <new-fun <InScope> from <ID> <InlineSequence>>
-DNXStmt.DNX_LinkFrameP = <<ID> ---\> <IDOrExp>>
-DNXStmt.DNX_LinkCont = <<ID> -<CONTSLOT>-\> <ID>>
-DNXStmt.DNX_LinkFrame = <<ID> -<LABEL>-\> <IDOrExp>>
-DNXStmt.DNX_Call = <call <ID>>
-DNXStmt.DNX_Return = <return <ID> <With?>>
-DNXStmt.DNX_CallWithReturn = <<{ID ","}+> := call <ID>>
-
-IDOrExp = ID
-IDOrExp = DNXExp
-
-DNXExp = <(<DNXExp>)> {bracket}
-DNXExp.DNX_ScopeOf = <scope-of <ID>>
-DNXExp.DNX_SlotLookup = <<ID>[<IntOrExp>]>
-DNXExp.DNX_SequenceApps = <sequence <RuleApp>>
-DNXExp.DNX_SequenceAppsIndexed = <sequence-with-index <RuleApp>>
-
-
-DNXExp.DNX_PrimitiveApp = <prim <TEMPLATENAME>(<{SequenceOrPrimitive ","}*>)>
-DNXExp = RuleApp
-RuleApp.DNX_RuleApp = <<RULENAME> <DNXExpOrTerm> in <ContinuationVar><InScope?>>
-DNXExp.ResolveVar = <resolve <ID>>
-
-SequenceOrPrimitive = Sequence
-SequenceOrPrimitive.String = STRING
-SequenceOrPrimitive.Int = INT
-
-
-//DNXStmt.DNX_RegisterFunc = <assign-function [<{DNXExp ","}+>]>
-
-
-DNXExp.DNX_Ref = ID {prefer}
-
-//DNXScopeExp = Scope
-//Scope.DNX_InScope = <<LinkRef>{
-//  <Sequence>
-//}>
-//
-//DNXExp.AnonTemplateApp = <template (<{AnonTemplateVarDecl ","}*>) in [[
-//  <RGRStmtOrExp>
-//]] <TemplateLabelDecls?>>
-//
-//DNXExp = RuleApp
-//DNXExp.NewCF = <new-cf <DNXExp> ^<ContinuationVar>>
-//DNXExp.NewCLosure = <new-clos length(<DNXExp>) <DNXExp>>
-//DNXExp.Store = <store <RuleApp> in <DNXExp>>
-//DNXExp.Let = <let <RuleApp> in <Scope>>
-//DNXExp.ResolveVar = <resolve <Var>>
-//DNXExp.RegisterFunc = <register <Var> as <Sequence>>
-//
-//RuleApp.RuleApp = <<RULENAME> <DNXExpOrTerm> ^<ContinuationVar>>
-//
-//AnonTemplateVarDecl.VarDecl = <<TemplateVarDecl>: <TemplateArg>>
-//TemplateArg.DNXT_Arg = <<Sequence>>
-//
-
-//WhereAssign.Set = <resolved <Var> := <DExp>>
-//WhereCode.Concat = <<{WhereCodeExp ";"}+>>
-//WhereCodeExp = DExp
-//
-//DExp.TemplateApp = <<TEMPLATENAME>(<{Var ", "}*>)>
-//DExp.NewCF = <new <DExp> ^<ContinuationVar>>
-//DExp.Sequence = <sequence <DApp>>
-//DExp.Native = <native {
-//  <InstrOrExp>
-//}>
-//DExp.Store = <store <DApp> @ <ControlFrame>>
-//DExp.Resolve = <resolve(<Var>)>
-//DExp.Get = <get(<DExp>)>
-//DExp.Call = <call^<ControlFrame>>
-//DExp.ResolveBlock = <resolve_block(<Var>)>
-//DExp.RegisterBlock = <register_block(<Var>, <DExp>)>
-//DExp.VarRef = Var
-//DExp.Scope = <<LinkRef>{
-//    <WhereCode>
-//}>
-//DExp = DApp
-//DApp.Recurse = <<RULENAME>:: <Term>^<ControlFrame>>
-//
-//ControlFrame.Var = <<Var>>
-//ControlFrame.This = <this>
-//
+ 
+ Definition.Def = <
+  <DEFNAME><DefParam?>(<{Pattern ","}*>) = 
+   <Block>
+ >
+ 
+ DefParam.Param = <[<DEFNAME>]>
+ DefParamType.ParamType = <[<{Type "->"}*> -\> <Type>]>
+ 
+ Definition.TypeDef = <<DEFNAME><DefParamType?>:: <{Type "->"}*> -\> <Type>>
+ Block.Block = <   
+  <{Instruction ";"}+>
+ >
+ 
+ Pattern.Var = <<ID>>
+ 
+ Type.Term = <term>
+ Type.Code = <code>
+ Type.Exp = <exp>
+ Type.Instr = <instr>
+ Type.Path = <path>
+ Type.Return = <return>
+ 
+ Pattern.Pat = <<ID>(<{Pattern ","}*>)>
+ Pattern.List = <[<{Pattern ","}*>]>
+ Pattern.ListTail = <[<{Pattern ","}+> | <Pattern>]>
+ Pattern.ListLast = <[<Pattern> || <{Pattern ","}+>]>
+ 
+ Instruction.Bind = [
+  [ID] <- [Exp]
+ ]
+ Instruction.Return = <return(<{Exp ","}*>)> {prefer}
+ Instruction.Exp = Exp
+ 
+ Exp.Call = <<DEFNAME><DefParam?>(<{Exp ","}*>)>
+ Exp.CallPrim = <<PRIMNAME><DefParam?>(<{Exp ","}*>)> {prefer}
+ Exp.Var = <<ID>>
+ Exp.Path = <[<{Exp ","}*>]>
+ Exp.Int = INT
+ 
+ Exp.Quote = [<[Block]>]
+ Exp.Splice = <~<Exp>>
+ Exp.Link = <&<LINKNAME>>
+ Exp.Cont = <$<CONTNAME>>

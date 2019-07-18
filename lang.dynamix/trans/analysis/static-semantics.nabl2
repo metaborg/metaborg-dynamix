@@ -1,0 +1,182 @@
+module analysis/static-semantics
+
+imports
+
+  signatures/-
+  analysis/definitions
+  analysis/common
+
+rules
+
+  init ^ (s) := new s.
+
+  [[Module(name, imports, prim_names, Defs(types), Defs(defs), candl) ^(s)]] :=
+    new module, module ---> s,
+    Module{name} <- s,
+    Module{name} -> module, 
+    Module{name}.defs := defs,
+    distinct/name D(s)/Module | error $[Multiple modules with name [name]] @NAMES,
+    
+    Map1(import) [[imports ^(module)]],
+    initTypes[[ name ^(module)]],
+    Map1(initLabels) [[ candl ^(module)]],
+    Map1(defNames) [[prim_names ^(module)]],
+    Map1(typeDecl) [[types ^(module)]],
+    new defs_s, defs_s ---> module,
+    new quotes_s, quotes_s ---> module,
+    Map1(def) [[defs ^(quotes_s, defs_s)]].
+    
+    
+  import [[Imports(imports) ^(s) ]] :=
+    Map1(import) [[imports ^(s) ]].
+    
+  import [[Import(name) ^(s)]] :=
+    false | warning $[Imports are not yet supported].
+
+  typeDecl [[TypeDef(name, paramType, args, ret) ^(s) ]] :=
+    Def{name} <- s,
+    type [[ret ^(s) : retty]],
+    Map1T(type) [[args ^(s) : argty]],
+    paramTypeDecl [[paramType ^(s) : paramty]],
+    Def{name}:DefT(paramty, argty, retty)!,
+    distinct/name D(s)/Def | error $[Multiple type signatures for rule [name]] @NAMES.
+  
+  paramTypeDecl [[None() ^(s) : NoParamT()]].
+  paramTypeDecl [[Some(ParamType(args, ret)) ^(s) : ParamT(argty, retty)]] :=
+    type [[ret ^(s) : retty]],
+    Map1T(type) [[args ^(s) : argty]].
+      
+  
+  initLabels [[Link(lbl) ^(s) ]] :=
+    LinkOrCont{lbl} <- s,
+    LinkOrCont{lbl}: LinkT().
+    
+  initLabels [[Cont(lbl) ^(s) ]] :=
+    LinkOrCont{lbl} <- s,
+    LinkOrCont{lbl}: ContT().
+    
+  def[[Def(name, param, args, Block(instrs)) ^(q, s)]] :=
+    Def{name} -> s,
+    Def{name} |-> d | error $[No type signature for rule [name]],
+    d:DefT(dparamty, dtys, drty),
+    new def_s,
+    def_s ---> s,
+    defParam [[param ^(def_s) : paramty]],
+    Map1T(term) [[args ^(def_s) : tys]],
+    Fold3T(instr) [[instrs ^(q, def_s, _) : rty]],
+    dtys == tys,
+    dparamty == paramty,
+    rty <sub? drty | error $[Wrong return type. Expected [drty], but got [rty]] @name.
+  
+  defParam [[None() ^(s) : NoParamT() ]].
+  defParam [[Some(Param(name)) ^(s) : ParamT(argty, rty) ]] :=
+    Def{name} <- s,
+    Def{name}:DefT(NoParamT(), argty, rty)!.
+    
+  type[[ Term()   ^(s) : TermT()   ]].
+  type[[ Code()   ^(s) : CodeT()   ]].
+  type[[ Exp()    ^(s) : ExpT()    ]].
+  type[[ Instr()  ^(s) : InstrT()  ]].
+  type[[ Path()   ^(s) : PathT()   ]].
+  type[[ Return() ^(s) : ReturnT() ]].
+  
+  
+  term[[Var(name) ^(s) : ty]] :=
+    Var{name} <- s,
+    Var{name}:ty!.
+    
+  term[[List(elems) ^(s) : TermT()]] :=
+    termMap [[elems ^(s) : TermT()]].
+    
+  term[[ListTail(elems, tail) ^(s) : TermT()]] :=
+    termMap [[elems ^(s) : TermT()]],
+    term [[tail ^(s) : TermT()]].
+    
+  term[[ListLast(init, last) ^(s) : TermT()]] :=
+    termMap [[last ^(s) : TermT()]],
+    term [[init ^(s) : TermT()]].
+    
+  term[[Pat(name, args) ^(s) : TermT()]] :=
+    termMap [[args ^(s) : TermT()]].
+  
+  termMap [[ [] ^(s) : ty ]].
+  termMap [[ [h|t] ^(s) : ty ]] :=
+    term [[h ^(s) : ty]], termMap [[t ^(s) : ty ]].
+  
+  Fold3T(X) [[ [Return(args)] ^(q, s, qp) : ExpT() ]] :=
+    rty == [ExpT()] | error $[A value of type [rty] cannot be returned by a definition],
+    Map3T(exp) [[args ^(q, s, qp) : rty]].
+    
+  Fold3T(X) [[ [Return(arg) | tail] ^(q, s, qp) : ExpT() ]] :=
+    rty == [ExpT()] | error $[A value of type [rty] cannot be returned by a definition],
+    Map3T(exp) [[args ^(q, s, qp) : rty]],
+    Fold3T(instr) [[tail ^(q, s, qp) : _]],
+    false | error $[Dead code] @tail.
+    
+  Fold3T(X) [[ [h] ^(a, b, c) : ty ]] :=
+    X[[ h ^(a, b, c, _, _, _) : ty]].
+    
+  Fold3T(X) [[ [h | t] ^(a, b, c) : ty ]] :=
+    X[[ h ^(a, b, c, a', b', c') : _ ]],
+    Fold3T(X)[[ t ^(a', b', c') : ty ]].
+  
+  
+  instr [[ Bind(name, exp) ^(q, s, qp, q', def_s, qp') : InstrT() ]] :=
+    q == q', qp == qp', 
+    exp [[exp ^(q, s, qp) : expty]],
+    new def_s,
+    def_s ---> s,
+    Var{name} <- def_s,
+    Var{name}:expty!.
+    
+  instr [[ Exp(exp) ^(q, s, qp, q', s', qp') : defrty ]] :=
+    q == q', s == s', qp == qp', 
+    exp[[exp ^(q, s, qp) : defrty]].
+    
+  exp [[Int(_) ^(q, s, qp) : IntT()]].
+  exp [[Path(_) ^(q, s, qp) : PathT() ]].
+  
+  exp [[Link(lbl) ^(q, s, qp) : ty ]] :=
+    LinkOrCont{lbl} -> s,
+    LinkOrCont{lbl} |-> d | error $[Link with label [lbl] is not defined],
+    d : ty.
+  
+  exp [[Cont(lbl) ^(q, s, qp) : ty ]] :=
+    LinkOrCont{lbl} -> s,
+    LinkOrCont{lbl} |-> d | error $[Continuation with label [lbl] is not defined],
+    d : ty.
+  
+  exp [[Var(name) ^(q, s, qp) : ty ]] :=
+    Var{name} -> s,
+    Var{name} |-> d | error $[Variable [name] not declared] @name,
+    d:ty.
+    
+  exp [[Call(name, param, args) ^(q, s, qp) : rty ]] :=
+    Def{name} -> s,
+    Def{name} |-> d | error $[Rule [name] not declared] @name,
+    d:DefT(dparamty, defargtys, defrty)!,
+    Map3T(exp) [[args ^(q, s, qp) : argtys]],
+    expParam [[param ^(s) : paramty]],
+    rty == defrty,
+    paramty == dparamty,
+    argtys <sub? defargtys | error $[Wrong argument type. Expected [defargtys], found [argtys]].
+     
+  expParam [[None() ^(s) : NoParamT() ]].
+  expParam [[Some(Param(name)) ^(s) : ParamT(argty, retty) ]] :=
+    Def{name} -> s,
+    Def{name} |-> d | error $[Rule [name] not defined],
+    d:DefT(dparamty, dargty, dretty),
+    dparamty == NoParamT() | error $[Nesting parameterized rules is not allowed],
+    argty == dargty, retty == dretty.
+  
+  exp [[Quote(Block(instrs)) ^(q, s, qp) : ty]] :=
+    new quote_s, quote_s ---> q,
+    qty == ty | error $[Found [qty], expected [ty]],
+    Fold3T(instr) [[instrs ^(q, quote_s, s) : qty]].
+    
+  exp [[Splice(Var(name)) ^(q, s, qp) : ty ]] :=
+    Var{name} -> qp,
+    Var{name} |-> d | error $[Variable [name] not declared] @name,
+    d:sty,
+    ty == sty.
+    

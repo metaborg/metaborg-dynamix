@@ -1,0 +1,6 @@
+module dynamix/Compile
+
+menus
+  
+  menu: "Dynamix" (openeditor)
+    action: "Compile"       = dnx-compile-to-fvm

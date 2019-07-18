@@ -1,0 +1,125 @@
+
+rules
+
+  init: Program(expr) cf:(c,x)^(s) -> c with exit
+    where
+      sequence top-exp expr in cf^(s);
+      exit := prim _exitOK()
+  
+  top-exp: Define(var, val) cf ^(s) -> cf^(d)
+	where
+	  new e; e ---> s;
+	  val' := exp val in cf^(e);
+	  new d; d ---> s;
+  	  var^(d) <- val'
+  	
+  top-exp: Redefine(var, val) cf^(s) -> cf^(e)
+	where
+	  new e; e ---> s;
+	  val' := exp val in cf^(e);
+	  var^(s) <- val'
+	
+  top-exp: exp cf^(s) -> cf^(s)
+    where
+      new e; e ---> s;
+      exp' := exp h in cf^(e);
+      prim _print(exp')
+
+
+rules
+  exp: IfElse(cond, then, else) cf^(s) -> cf^(s) with res
+  	where
+  	  cond' := exp cond in cf^(s);
+  	  then' ::= [[exp else in cf^(s)] e-cf^(s)];
+  	  else' ::= [[exp else in cf^(s)] e-cf^(s)];
+  	  res := prim _if-exp(cond', cond, else')
+  	
+  exp: UnOp(Car(), exp) cf^(s) -> cf^(s) with res
+  	where
+  	  frame := exp exp in cf^(s);
+  	  res := frame[0]
+  	
+  
+  exp: EmptyList() cf^(s) -> cf^(s) with res
+    where
+      new e						// How to know the size of a new frame?
+  
+  exp: Conss(h, t) cf^(s) -> cf^(s) with list
+    where
+      new list; 
+      list[0] <- exp h in cf^(s);
+      list[1] <- exp t in cf^(s)
+  	
+  exp: BinOp(Add(), e1, e2) cf^(s) -> cf^(s) with res
+  	where
+  	  v1 := exp e1 in cf^(s);
+  	  v2 := exp e2 in cf^(s);
+  	  res := prim _addi(v1, v2)
+  	
+  exp: BinOp(SetCar(), e1, e2) cf^(s) -> cf^(s) with res
+  	where
+  	  frame := exp e1 in cf^(s);
+  	  val := exp e2 in cf^(s);
+  	  res := frame[0];
+  	  frame[0] <- val
+  		
+//  Expr [[ Callcc(exp) ^(s) ]] :=
+//  	Expr [[exp ^(s)]].
+  	
+  exp: Set(ref, exp) cf^(s) -> cf^(s) with val
+    where
+      val := exp exp in cf^(s);
+  	  ref <- val
+  	
+  exp: Let(binds, body) cf^(s) -> cf^(s) with res
+  	where
+  	  new let; let ---> s;
+  	  sequence bind-exp binds in cf^(s, let);		// Using two current scopes is not technically correct, but it seems like a clean way to model this
+  	  res := sequence expr body in cf^(let)
+  	
+  bind-exp: Bind(name, val) cf^(s, let) -> cf^(s) with val'
+  	where
+  	  val' :=  exp val in cf^(p);
+  	  name^(let) <- val' 
+	
+	
+  exp: Lambda(binds, body) cf^(s) -> cf^(s) with clos
+    where
+  	  new lam; lam ---> s;
+  	  new-clos clos ^(lam) [[ sequence exp body in cf^(lam) ] cf^(lam)];     // Scoping rules of this are a bit weird and counter-intuitive
+  	  sequence bind-lam-exp binds in cf^(lam)           // For default values
+  
+  bind-lam-exp: name cf^(s) -> cf^(s)
+    where
+      default := prim _int(0);
+      name <- default
+	    
+  exp: Ref(name) cf^(s) -> cf^(s) with val
+    where
+  	  name -> val
+ 
+  exp: FunApp([func | exps]) cf^(s) -> cf^(s) with res
+    where
+      lambda := exp func in cf^(s);
+      new-cf fun-cf:(cf)^(fun-s) from-clos lambda;
+      fun-cf -c-> cf;
+      sequence-with-index fun-arg-exp exps in cf^(s, fun-s);		// Check if this order is guaranteed when using the scope -> [occ] function
+      res := call fun-cf 
+  
+  fun-arg-exp: (n,exp) cf^(s, fun-s) -> cf^(s)
+    where
+      val := exp exp in cf^(s);
+      n <- val
+    
+  exp: Num(n) cf^(s) -> cf^(s) with val
+    where
+      val := prim _int(n)
+    
+  exp: Bool("#t") cf^(s) -> cf^(s) with val
+    where
+      val := prim _true()
+    
+  exp: Num(n) cf^(s) -> cf^(s) with val
+    where
+      val := prim _false()
+    

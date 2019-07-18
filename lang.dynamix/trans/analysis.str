@@ -1,17 +1,23 @@
 module analysis
 
 imports
-  
+  nabl2/runtime/analysis/constraint-compat
   nabl2/api
   nabl2/runtime
 
-  static-semantics
+  analysis/static-semantics
+  signatures/Dynamix-sig
 
   pp
 
+signature
+  sorts S
+  constructors    
+    Module : STRING * [Import] * [STRING] * [Def] * [Def]  * [STRING] -> S
+    
 rules // Analysis
 
-  editor-analyze = nabl2-analyze(id)
+  editor-analyze = nabl2-analyze(collect-def-types; collect-prim-names; remove-prim-calls); store-dnx-spec 
 
 rules // Debugging
   
@@ -24,3 +30,57 @@ rules // Debugging
   debug-show-analyzed: (selected, _, _, path, project-path) -> (filename, result)
     with filename := <guarantee-extension(|"analyzed.aterm")> path
        ; result   := selected
+
+rules
+  collect-def-types: Module(name, imports, defs) -> Module(name, imports, [], Defs(type_decls), Defs(def_decls), candl)
+    where
+      candl := [Link("P"), Link("I"), Cont("ret"), Cont("exc"), Cont("next")];
+      all_defs := <mapconcat((\ Defs(d) -> d \))> defs;
+      def_decls  := <filter(?Def(_, _, _, _))> all_defs;
+      type_decls := <filter(?TypeDef(_, _, _, _))> all_defs
+      
+      
+  collect-prim-names: Module(name, imports, _, types, defs, candl) -> Module(name, imports, prim_names, types, defs, candl)
+    where
+      prim_names := <collect-all((\CallPrim(name, param, args) -> name\))>
+      
+  remove-prim-calls = topdown(try((\CallPrim(name, param, args) -> Call(name, param, args)\)))
+      
+      
+rules
+  store-dnx-spec: a@AnalysisResult(files) -> a
+    with
+      dnx_main_name := "dynamic-semantics";
+      main := <filter(get-main-ast(|dnx_main_name))> <collect-all(?Full(_,_,_,_,_))> files;
+      <store-dnx-main(|dnx_main_name)> main
+      
+  store-dnx-main(|name): [Module(_,_,_, types, defs, candl)] -> e 
+    with
+      // TODO: Check if this path works on Windows
+      e := <store-term(|"src-gen/dynamix/spec.aterm")> (types, defs, candl)
+      
+  store-dnx-main(|name): [] -> [] with <debug(!"[Dynamix] ")> $[No module with name '[name]']
+  store-dnx-main(|name): e -> e
+  
+  store-term(|fname): term -> out
+    where
+      <debug(!"[Dynamix] ")> $<Writing to file '<fname>'>;
+      out := <write-string-to-file> (fname, <write-to-string > term)
+      
+  store-term(|fname): term -> term where <debug(!"[Dynamix] ")> $<Failed to write to file <fname>>
+
+  write-string-to-file =
+    ?(filename, string);
+    if <dirname; readdir> filename then
+      with(
+        handle := <fopen> (filename, "w");
+        <fputs> (string, handle);
+        <fclose> handle
+      )
+    end   
+  
+  get-main-ast(|main): Full(ast@Module(mname, _, _, _, _, _), _,_,_,_) -> ast
+    where
+      <equal> (main, <strip-annos> mname)
+  
+  

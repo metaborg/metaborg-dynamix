@@ -1,0 +1,148 @@
+//eval Lambda(arg, body) = 
+//  c <- <
+//    arg' <- pop()
+//    set(getCurr(), [0], arg')
+//    v1 <- eval(body)
+//    
+//    returnTo(get(getCF(), ret), v1)
+//  >
+//  df <- new()
+//  setl(df, [], P)
+//  clos <- new-clos(df, c)
+//  
+//  
+//eval Call(func, arg) = 
+//  clos <- eval(func)
+//  v1 <- eval(arg)
+//  clos-cf <- from-clos(clos)
+//  transfer(v1, clos-cf)
+  
+  
+  
+  
+  // -------------------------------------------------
+
+module dynamic-semantics
+
+rules // library
+  transfer:: exp -> exp -> instr
+  transfer(v, cf) = 
+    push(cf, v)
+ 	
+  fetch:: exp -> exp
+  fetch(cf) =
+    return(pop(cf))
+    
+  returnTo:: exp -> exp -> return
+  returnTo(v, cf) = 
+    transfer(v, cf);
+    returnCF(cf)
+    
+rules // language  
+  eval:: term -> exp
+  eval(Plus(e1, e2)) = 
+    v1 <- eval(e1);
+    v2 <- eval(e2);
+    return(iadd(v1, v2))
+    
+  eval(Var(x)) =
+    return(get(getcur(), resolve(x)))
+    
+  eval(Let(x, e1, e2)) = 
+    v1 <- eval(e1);
+    f <- new(int(1));
+    link(f, getcur(), &P);
+    set(f, resolve(x), v1);
+    mkcur(f);
+    v2 <- eval(e2);
+    mkcur(get(f, [P]));
+    return(v2)
+  
+  eval(If(e1, e2, e3)) = 
+    v1 <- eval(e1);
+    c2 <- < 
+    	v1 <- eval(~e2);
+    	return(v1)
+    >;
+    c3 <- <return(eval(~e3))>;
+    return(jumpz(v1, c2, c3))
+//    
+//  eval(Lam(x, e)) = 
+//    c <- <
+//      f <- new(1);
+//      link(f, P, pop()); // parent frame
+//      set(f, [0], pop()); // argument
+//      mkcur(curCF(), f);
+//      v <- eval(~e);
+//      returnTo(v, get(curCF(), ret))
+//    >;
+//    clos <- new();
+//    set(clos, [0], c);
+//    set(clos, [1], getcur());
+//    return(clos)
+    
+//  eval(Call(e1, e2)) = 
+//    clos <- eval(e1); 
+//    v2 <- eval(e2);
+//    cf <- newCF(1);
+//    transfer(v2, cf);
+//    transfer(get(clos, [1])); // parent frame 
+//    setCF(cf, $ret, curCF());
+//    set(cf, PC, get(clos, [0]));
+//    callCF(cf);
+//    return(pop(cf))
+    
+  eval(Try(e1, e2)) = 
+    c1 <- <
+        v1 <- eval(~e1); 
+        returnTo(v1, getCF(curCF(), $next))
+      >;
+    c2 <- <
+        v2 <- eval(~e2); 
+        returnTo(v2, getCF(curCF(), $next)) 
+      >;
+      
+    cf2 <- newCF(c2, 3);
+    setCF(cf2, $exc, getCF(curCF(), $exc));
+    setCF(cf2, $ret, getCF(curCF(), $ret));
+    setCF(cf2, $next, curCF());
+    
+    cf1 <- newCF(c1, 3);
+    setCF(cf1, $exc, cf2);
+    setCF(cf1, $ret, getCF(curCF(), $ret));
+    setCF(cf1, $next, curCF());
+    callCF(cf1);
+    return(pop(curCF()))
+  
+  eval(Throw(e)) = 
+    v <- eval(e);
+    returnTo(v, getCF(curCF(), $exc))
+
+
+// -------------------------------------------------------
+    
+//  eval(Lam(x, e)) = 
+//    c <- <
+//      v <- eval(e);
+//      transfer v get(curCF(), ret);
+//      call(get(curCF(), ret)) // return to caller of lambda
+//    >;
+//    clos <- new();
+//    setv(clos, [0], c);
+//    setv(clos, [1], getcur());
+//    return clos
+//    
+//  eval(Call(e1, e2)) = 
+//    clos <- eval(e1); 
+//    v2 <- eval(e2);
+//    f <- new(1);
+//    setv(f, [0], v2);
+//    setl(f, P, get(clos, [1]));
+//    cf <- newc(1);
+//    set(cf, ret, curCF());
+//    set(cf, df, f);
+//    set(cf, PC, get(clos, [0]));
+//    call(cf)
+
+
+  

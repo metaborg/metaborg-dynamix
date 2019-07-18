@@ -1,0 +1,284 @@
+templates
+  line(stmt instr) with LINE:
+    a <- cnew(getcurrent(), LINE, 1)
+    cset(a, c, cget(c))
+    set([Q, 0], a)
+    [[instr]]
+    cret(get([Q, 0]))
+    
+   LINE:
+    local := 99
+
+  line-assign(stmt val_instr, stmt store_instr) with LINE:
+    a <- new(1)
+    link(a, [Q], Q)
+    link(a, [], P)
+    b <- cnew(a, LINE, 1)
+    cset(b, c, cget(c))
+    set([Q, 0], b)
+    
+    [[val_instr]]
+    mkcurrent(a)
+    [[store_instr]]
+    cret(get([Q, 0]))
+    
+   LINE:
+    local := 99
+
+  print(exp val):
+    print(<val>)
+    
+  car(exp list):
+    get(<list>, [0])
+    
+  cdr(exp list):
+    get(<list>, [1])
+
+  mk-lambda(exp size, stmt-exp body) with CONT, LAMBDA:
+    a <- new(<size>)
+    link(a, [], P)
+    b <- cnew(a, LAMBDA, 1)
+    jump(CONT)
+    
+   LAMBDA:
+    local := 99
+    [[body]]
+    return(<body>)
+    
+   CONT:
+    local := 99
+    b
+    
+rules
+
+init: Program(exps) ^(c, x) -> c with exit
+  where
+    template () in [[
+      a <- new(0)
+      link(a, [], Q)
+      b <- cnew(a, LINE, 1)
+      set([0], b)
+      cset(b, c, cget(c))
+      cret(b)
+      
+     LINE:
+      local := 99
+    ]] with LINE;
+    
+    sequence topexp exps^(c);		// Technically (c) is different than the (c) in the signature..
+    exit := template () in __exit-ok
+    
+topexp: Define(Bind(name, _), val) ^(c) -> continue
+  where
+    register-slots [name];			// This should not be needed as the `<-` operator can fix this
+    template (
+	    P{
+	      val' := exp val^(c)
+	    };
+	    name <- val'
+	) in line-assign
+    
+topexp: Redefine(name, val) ^(c) -> continue
+  where
+    template (
+	    P{
+	      val' := exp val^(c)
+	    };
+	    name <- val'
+	) in line
+
+    
+topexp: lambda@Lambda(args, body) ^(c) -> continue
+  where
+    template (
+	    P{
+	      val' := exp lambda^(c)
+	    }
+	) in line
+
+    
+topexp: exp ^(c) -> continue
+  where
+    template (
+	    P{
+	      val' := exp exp^(c);
+	    };
+	    template (val') in __print
+	) in line;
+
+	
+rules
+// Do we want parameterised rules for un/binops?
+exp: UnOp(Abs(), exp)^(c) -> continue with absval
+  where
+    val := exp exp^(c);
+    cond := exp BinOp(LT(), val, Num("0")) ^(c);
+    val_inv ::= exp UnOp(Not(), val)^(c);
+    absval := template (cond, val_inv, val) in __if-exp;
+    
+exp: UnOp(Not(), exp)^(c) -> continue with negval
+  where
+    val := exp exp^(c);
+    negval := template (val) in __ineg;
+    
+exp: UnOp(Car(), exp)^(c) -> continue with carval
+  where
+    val := exp exp^(c);
+    carval := template (val) in car;
+    
+exp: UnOp(Cdr(), exp)^(c) -> continue with cdrval
+  where
+    val := exp exp^(c);
+    cdrval := template (val) in cdr;
+    
+    
+
+    
+exp: BinOp(SetCar(), e1, e2)^(c) -> continue with carval
+  where
+    list := exp e1^(c);
+    carval := exp UnOp(Car(), list)^(c);
+    val := exp e2^(c);
+    template (list, val) in set-car;
+    
+exp: BinOp(SetCdr(), e1, e2)^(c) -> continue with carval
+  where
+    list := exp e1^(c);
+    carval := exp UnOp(Cdr(), list)^(c);
+    val := exp e2^(c);
+    template (list, val) in set-cdr;
+    
+exp: BinOp(Add(), e1, e2)^(c) -> continue with val
+  where
+    v1 := exp e1^(c);
+    v2 := exp e2^(c);
+    val := template (v1, v2) in __addi;
+    
+exp: BinOp(Sub(), e1, e2)^(c) -> continue with val
+  where
+    v1 := exp e1^(c);
+    v2 := exp e2^(c);
+    val := template (v1, v2) in __subi;
+    
+exp: BinOp(Mul(), e1, e2)^(c) -> continue with val
+  where
+    v1 := exp e1^(c);
+    v2 := exp e2^(c);
+    val := template (v1, v2) in __muli;
+    
+exp: BinOp(Div(), e1, e2)^(c) -> continue with val
+  where
+    v1 := exp e1^(c);
+    v2 := exp e2^(c);
+    val := template (v1, v2) in __divi;
+    
+exp: BinOp(And(), e1, e2)^(c) -> continue with val
+  where
+    v1 := exp e1^(c);
+    v2 := exp e2^(c);
+    val := template (v1, v2) in __andi;
+    
+exp: BinOp(Or(), e1, e2)^(c) -> continue with val
+  where
+    v1 := exp e1^(c);
+    v2 := exp e2^(c);
+    val := template (v1, v2) in __ori;
+    
+exp: BinOp(Eq(), e1, e2)^(c) -> continue with val
+  where
+    v1 := exp e1^(c);
+    v2 := exp e2^(c);
+    val := template (v1, v2) in __eqi;
+    
+exp: BinOp(Lt(), e1, e2)^(c) -> continue with val
+  where
+    v1 := exp e1^(c);
+    v2 := exp e2^(c);
+    val := template (v1, v2) in __lti;
+    
+exp: BinOp(Gt(), e1, e2)^(c) -> continue with val
+  where
+    v1 := exp e1^(c);
+    v2 := exp e2^(c);
+    val := template (v1, v2) in __gti;
+    
+exp: BinOp(Gte(), e1, e2)^(c) -> continue with val
+  where
+    v1 := exp e1^(c);
+    v2 := exp e2^(c);
+    gt := exp BinOp(Gt(), v1, v2) ^(c);
+    eq := exp BinOp(Eq(), v1, v2) ^(c);
+    val := template (gt, eq) in __ori;
+    
+exp: BinOp(Lte(), e1, e2)^(c) -> continue with val
+  where
+    v1 := exp e1^(c);
+    v2 := exp e2^(c);
+    lt := exp BinOp(Lt(), v1, v2) ^(c);
+    eq := exp BinOp(Eq(), v1, v2) ^(c);
+    val := template (lt, eq) in __ori;
+    
+exp: Conss(h, tail)^(c) -> continue with val
+  where
+    h' := exp h^(c);
+    tail' := exp tail^(c);
+    val := template (exp h:h', exp t:tail) in [[
+      new{<h>, <t>}
+    ]];
+    
+exp: EmptyList()^(c) -> continue with val
+  where
+    val := template () in [[
+      new(0)
+    ]];
+      
+exp: FunApp([func|args])^(c) -> continue with val
+  where
+    clos := exp func^(c);
+    func' := new-cf clos^(this);
+    store exp args^c in func';
+    val := call func';
+
+exp: Lambda(args, body)^(c) -> continue with val
+  where
+    body' := sequence exp body ^(c);
+    clos := new-clos length(args) body';
+
+exp: Ref(ref)^(c) -> continue with val
+  where
+    val := resolve ref;
+
+exp: Set(Ref(ref), val)^(c) -> continue with val'
+  where
+    val' := resolve ref;
+    ref <- exp val ^(c)
+    
+exp: IfElse(cond, then, else) ^(c) -> continue with val
+  where
+    cond' := exp cond ^(c);
+    then' ::= exp then ^(c);
+    else' ::= exp else ^(c);
+    val := template (cond', then', else') in __exp-if
+    
+exp: Bool("#f") ^(c) -> continue with val
+  where
+    val := template () in __false
+    
+exp: Bool("#t") ^(c) -> continue with val
+  where
+    val := template () in __true
+    
+exp: Num(val) ^(c) -> continue with val
+  where
+    val := template (val) in __int
+    
+exp: Let(binds, body) ^(c) -> continue with val	
+  where
+    let bind-exp binds^(c) in P{
+      val := sequence exp body ^(c)
+    };
+    
+    
+bind-exp: Bind(name, val)^(c) -> continue
+  where
+    name <- exp val ^(c)
