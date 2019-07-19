@@ -77,15 +77,33 @@ data Cmd :: * -> * where
   CurCF   :: Cmd CFrame
   -- MkCurCF :: CFrame -> Cmd ()
   Call    :: CFrame -> Cmd ()
-  SetCV   :: CFrame -> ControlSlot a -> a -> Cmd ()
+  SetCV   :: Show a => CFrame -> ControlSlot a -> a -> Cmd ()
   GetCV   :: CFrame -> ControlSlot a -> Cmd a
-  SetRV   :: CFrame -> Reg a -> a -> Cmd ()
+  SetRV   :: Show a => CFrame -> Reg a -> a -> Cmd ()
   GetRV   :: CFrame -> Reg a -> Cmd a
   NewCF   :: Code Val -> CFrame -> Frame -> Cmd CFrame
 
   -- failure fragment
   Fail    :: String -> Cmd a
 
+instance Show (Cmd a) where
+  show (AddI v1 v2) = "AddI " ++ show v1 ++ " " ++ show v2
+  show (SetL f n f') = "SetL " ++ show f ++ " " ++ show n ++ " " ++ show f'
+  show (SetV f n v) = "SetV " ++ show f ++ " " ++ show n ++ " " ++ show v
+  show (Get p) = "Get " ++ show p
+  show (GetV f n) = "GetV " ++ show f ++ " " ++ show n
+  show (New i) = "New " ++ show i
+  show (GetL ls) = "GetL " ++ show ls
+  show (Quote c) = "Quote " ++ show c
+  show (JumpZ v c1 c2) = "JumpZ " ++ show v ++ " " ++ show c1 ++ " " ++ show c2
+  show CurCF = "CurCF"
+  show (Call cf) = "Call " ++ show cf
+  show (SetCV cf cs a) = "SetCV " ++ show cf ++ " " ++ show cs ++ " " ++ show a
+  show (GetCV cf cs) = "GetCV " ++ show cf ++ " " ++ show cs
+  show (SetRV cf r a) = "SetRV " ++ show cf ++ " " ++ show r ++ " " ++ show a
+  show (GetRV cf r) = "GetRV " ++ show cf ++ " " ++ show r
+  show (NewCF cd cf f) = "NewCF " ++ show cd ++ " " ++ show cf ++ " " ++ show f
+  show (Fail s) = "Fail " ++ s
 
 -----------------------
 --- monad instances ---
@@ -137,7 +155,8 @@ data Regs = Regs { argvalue  :: Maybe Val
 data ControlFrame = CF { pc   :: Code Val
                        , ret  :: CFrame
                        , df   :: Frame
-                       , regs :: Regs }
+                       , exch :: Maybe CFrame
+                       , regs :: Regs     }
                   deriving Show
 
 type Stack = [ControlFrame]
@@ -255,7 +274,7 @@ allocFrame _ = do
 allocCFrame :: Code Val -> CFrame -> Frame -> M CFrame
 allocCFrame cd cf f = do
   s <- getStack
-  putStack (s ++ [CF cd cf f (Regs Nothing Nothing)])
+  putStack (s ++ [CF cd cf f Nothing (Regs Nothing Nothing)])
   return (length s)
 
 getPC :: CFrame -> M (Code Val)
@@ -278,6 +297,8 @@ setControlSlot cf cs a = do
       putStack (update' s cf (cfc { ret = a }))
     DF ->
       putStack (update' s cf (cfc { df = a }))
+    ExcH ->
+      trace (show $ (update' s cf (cfc { exch = Just a }))) $ putStack (update' s cf (cfc { exch = Just a }))
 
 getControlSlot :: CFrame -> ControlSlot a -> M a
 getControlSlot cf cs = do
@@ -287,6 +308,8 @@ getControlSlot cf cs = do
       return (ret cfc)
     DF ->
       return (df cfc)
+    ExcH ->
+      return (fromJust (exch cfc))
 
 getRegs :: CFrame -> M Regs
 getRegs cf = do
@@ -327,7 +350,7 @@ data Result a = Final a
 
 step :: Code Val -> M (Result Val)
 step (Stop a)   = return (Final a)
-step (Step (AddI v1 v2) k) =
+step (Step (AddI v1 v2) k) = 
   case (v1, v2) of
     (NumV i1, NumV i2) ->
       return (Cont (k (NumV (i1 + i2))))
@@ -353,7 +376,7 @@ step (Step (GetL ls) k) = do
   f  <- getCurDF
   f' <- followLinks f ls
   return (Cont (k f'))
-step (Step (Quote c) k) =
+step (Step (Quote c) k) = 
   return (Cont (k c))
 step (Step (JumpZ v c1 c2) _) = do
   case v of
@@ -392,6 +415,11 @@ step (Step (Fail s) _) = do
 steps :: Code Val -> M (Either Val String)
 steps c = trace "stepping ..." $ do
   cf <- getCurCF
+  case c of
+    Step c' _ ->
+     trace (show c') $ return ()
+    _ ->
+     trace (show c) $ return ()
   r <- step c
   case r of
     Final a ->
@@ -412,11 +440,12 @@ interp e = do
   cfcur <- getCurCF
   dfcur <- getCurDF
   cf    <- allocCFrame (eval e) cfcur dfcur
+  setControlSlot cf ExcH 0
   steps (Step (Call cf) (\_ -> Stop (NumV (-2)))) -- should probably be fail
   
 run :: Expr -> Either Val String
 run e =
   fst $ runState (interp e)
                  ([],
-                  [CF (Stop (NumV (- 2))) (-1) (-1) (Regs Nothing Nothing)],
+                  [CF (Stop (NumV (- 2))) (-1) (-1) (Just 0) (Regs Nothing Nothing)],
                   0)

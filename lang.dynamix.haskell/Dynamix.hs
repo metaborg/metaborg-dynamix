@@ -40,16 +40,27 @@ instance Show (Value m) where
   
 data Path = PStep Label Path
           | PPos Name
+          deriving Show
 
 data ControlSlot :: * -> * where
-  Ret       :: ControlSlot CFrame -- return address
-  DF        :: ControlSlot Frame        -- data frame
+  Ret  :: ControlSlot CFrame -- return address
+  ExcH :: ControlSlot CFrame -- exception handler
+  DF   :: ControlSlot Frame  -- data frame
+
+instance Show (ControlSlot a) where
+  show Ret = "Ret"
+  show ExcH = "ExcH"
+  show DF = "DF"
 
 data Register m :: * -> * where
   CallArg   :: Register m (Value m) -- for passing arg value info from call site context to function call
   CallRet   :: Register m (Value m) -- for passing return value from functioncall to call site context
 
-  
+instance Show (Register m a) where
+  show CallArg = "CallArg"
+  show CallRet = "CallRet"
+
+
 -----------------------------------
 --- object language expressions ---
 -----------------------------------
@@ -61,6 +72,8 @@ data Expr = Num Int
           | If Expr Expr Expr
           | Lam Name Expr
           | App Expr Expr
+          | Try Expr Expr
+          | Throw
 
 
 -------------
@@ -82,16 +95,16 @@ class Monad m => MonadControlFrames m where
   quote   :: m a -> m (m a)
 
   jumpz   :: Value m -> m (Value m) -> m (Value m) -> m (Value m)
-  
+
   curcf   :: m CFrame
 --  mkcurcf :: CFrame -> m ()
 
   call    :: CFrame -> m ()
 
-  setcv   :: CFrame -> ControlSlot a -> a -> m ()
+  setcv   :: Show a => CFrame -> ControlSlot a -> a -> m ()
   getcv   :: CFrame -> ControlSlot a -> m a
 
-  setrv   :: CFrame -> Register m a -> a -> m ()
+  setrv   :: Show a => CFrame -> Register m a -> a -> m ()
   getrv   :: CFrame -> Register m a -> m a
 
   newcf   :: m (Value m) -> CFrame -> Frame -> m CFrame
@@ -111,6 +124,12 @@ mkcur f = do
   cf <- curcf
   setcv cf DF f
 
+returnTo :: (MonadControlFrames m,
+             MonadFail m) => Value m -> CFrame -> m (Value m)
+returnTo v cf = do
+  setrv cf CallRet v
+  call cf
+  Fail.fail "Unreachable code"
 
 -------------------
 --- interpreter ---
@@ -154,9 +173,7 @@ eval (Lam x e) = do
          mkcur f
          v     <- eval e
          retcf <- getcv cf Ret
-         setrv retcf CallRet v
-         call retcf
-         Fail.fail "Unreachable code") -- unreachable
+         returnTo v retcf) -- unreachable
   clos <- new 2
   setv clos (Pos 0) (CodeV c)
   df <- getcur
@@ -169,11 +186,38 @@ eval (App e1 e2) = do
   FrameV pf <- getv clos (Pos 1)
   cfc <- curcf
   cf <- newcf instrs cfc pf
+  ecf <- getcv cfc ExcH
+  setcv cf ExcH ecf
   setrv cf CallArg v2
   call cf
   getrv cfc CallRet
+eval (Try e1 e2) = do
+  c1 <- quote (do
+          v1 <- eval e1
+          cf <- curcf
+          rcf <- getcv cf Ret
+          returnTo v1 rcf)
+  c2 <- quote (do
+          v2 <- eval e2
+          cf <- curcf
+          rcf <- getcv cf Ret
+          returnTo v2 rcf)
 
+  cf <- curcf
+  df <- getcur
 
+  exch <- getcv cf ExcH
+  cf2 <- newcf c2 cf df
+  setcv cf2 ExcH exch
 
+  cf1 <- newcf c1 cf df
+  setcv cf1 ExcH cf2
 
+  call cf1
+  getrv cf CallRet
+eval Throw = do
+  cf <- curcf
+  ecf <- getcv cf ExcH
+  call ecf
+  Fail.fail "Unreachable"
 
