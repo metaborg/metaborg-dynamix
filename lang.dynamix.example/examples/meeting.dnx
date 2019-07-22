@@ -25,21 +25,21 @@
 module dynamic-semantics
 
 rules // library
-  transfer:: exp -> exp -> instr
+  transfer:: val -> val -> instr
   transfer(v, cf) = 
     push(cf, v)
  	
-  fetch:: exp -> exp
+  fetch:: val -> val
   fetch(cf) =
     return(pop(cf))
     
-  returnTo:: exp -> exp -> return
+  returnTo:: val -> val -> return
   returnTo(v, cf) = 
     transfer(v, cf);
     returnCF(cf)
     
 rules // language  
-  eval:: term -> exp
+  eval:: ast -> val
   eval(Plus(e1, e2)) = 
     v1 <- eval(e1);
     v2 <- eval(e2);
@@ -101,13 +101,17 @@ rules // language
         v2 <- eval(~e2); 
         returnTo(v2, getCF(curCF(), $next)) 
       >;
-      
-    cf2 <- newCF(c2, 3);
+    
+    f2 <- new(1);
+    link(f2, getcur(), &P);
+    cf2 <- newCF(c2, f2, int(3));
     setCF(cf2, $exc, getCF(curCF(), $exc));
     setCF(cf2, $ret, getCF(curCF(), $ret));
     setCF(cf2, $next, curCF());
     
-    cf1 <- newCF(c1, 3);
+    f1 <- new(int(1));
+    link(f1, getcur(), &P);
+    cf1 <- newCF(c1, f1, 3);
     setCF(cf1, $exc, cf2);
     setCF(cf1, $ret, getCF(curCF(), $ret));
     setCF(cf1, $next, curCF());

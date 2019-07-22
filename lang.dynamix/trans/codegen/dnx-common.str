@@ -1,0 +1,14 @@
+module dnx-common
+
+imports
+  signatures/Dynamix-sig
+
+signature
+  sorts S
+  constructors    
+    Module : STRING * [Import] * [STRING] * [Def] * [Def]  * [STRING] -> S
+    NormModule: Header * [STRING] * [NormDef] -> S
+    NormDef: STRING * TypeDef * [DefCase] -> S
+    DefCase: [Pattern] * [STRING] * [instruction] -> S
+    BindExp: [STRING] * [Exp] -> S
+    MatchError: STRING -> S

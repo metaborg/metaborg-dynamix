@@ -60,4 +60,15 @@
       </snapshots>
     </pluginRepository>
   </pluginRepositories>
+  
+  
+  <dependencies>
+  	<dependency>
+  		<groupId>org.metaborg.lang</groupId>
+  		<artifactId>framevm</artifactId>
+  		<version>1.1.0</version>
+  		<scope>runtime</scope>
+		<type>spoofax-language</type>
+  	</dependency>
+  </dependencies>
 </project>

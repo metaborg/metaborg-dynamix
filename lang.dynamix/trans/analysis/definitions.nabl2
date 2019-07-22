@@ -8,27 +8,27 @@ rules
 
   defNames[[ name@"empty" ^(s)]] :=
     Def{name} <- s,
-    Def{name} : DefT(NoParamT(), [PathT(), ExpT()], InstrT()) !.
+    Def{name} : DefT([], [PathT(), ExpT()], InstrT()) !.
 
   defNames[[ name@"push" ^(s)]] :=
     Def{name} <- s,
-    Def{name} : DefT(NoParamT(), [ExpT(), ExpT()], InstrT()) !.
+    Def{name} : DefT([], [ExpT(), ExpT()], InstrT()) !.
   
   defNames[[ name@"pop" ^(s)]] :=
     Def{name} <- s,
-    Def{name} : DefT(NoParamT(), [ExpT()], ExpT()) !.
+    Def{name} : DefT([], [ExpT()], ExpT()) !.
 
   defNames[[ name@"print" ^(s)]] :=
     Def{name} <- s,
-    Def{name} : DefT(NoParamT(), [ExpT()], InstrT()) !.
+    Def{name} : DefT([], [ExpT()], InstrT()) !.
 
   defNames[[ name@"printc" ^(s)]] :=
     Def{name} <- s,
-    Def{name} : DefT(NoParamT(), [ExpT()], InstrT()) !.
+    Def{name} : DefT([], [ExpT()], InstrT()) !.
 
   defNames[[ name@"jumpz" ^(s)]] :=
     Def{name} <- s,
-    Def{name} : DefT(NoParamT(), [ExpT(), then, else], then),
+    Def{name} : DefT([], [ExpT(), then, else], then),
     then <sub? CodeT(),
     then == else | error $[Both branches in the jump should have the same type].
     // m == then meet else, m != CodeT()
@@ -36,143 +36,143 @@ rules
 
   defNames[[ name@"callCF" ^(s)]] :=
     Def{name} <- s,
-    Def{name} : DefT(NoParamT(), [ExpT()], InstrT()) !.
+    Def{name} : DefT([], [ExpT()], InstrT()) !.
 
   defNames[[ name@"returnCF" ^(s)]] :=
     Def{name} <- s,
-    Def{name} : DefT(NoParamT(), [ExpT()], ReturnT()) !.
+    Def{name} : DefT([], [ExpT()], ReturnT()) !.
 
   defNames[[ name@"curCF" ^(s)]] :=
     Def{name} <- s,
-    Def{name} : DefT(NoParamT(), [], ExpT()) !.
+    Def{name} : DefT([], [], ExpT()) !.
 
   defNames[[ name@"newCF" ^(s)]] :=
     Def{name} <- s,
-    Def{name} : DefT(NoParamT(), [InstrT(), TermT()], ExpT()) !.
+    Def{name} : DefT([], [InstrT(), TermT()], ExpT()) !.
 
   defNames[[ name@"getCF" ^(s)]] :=
     Def{name} <- s,
-    Def{name} : DefT(NoParamT(), [ExpT(), ContT()], ExpT()) !.
+    Def{name} : DefT([], [ExpT(), ContT()], ExpT()) !.
 
   defNames[[ name@"setCF" ^(s)]] :=
     Def{name} <- s,
-    Def{name} : DefT(NoParamT(), [ExpT(), ContT(), ExpT()], InstrT()) !.
+    Def{name} : DefT([], [ExpT(), ContT(), ExpT()], InstrT()) !.
 
   defNames[[ name@"unpackCF" ^(s)]] :=
     Def{name} <- s,
-    Def{name} : DefT(NoParamT(), [ExpT()], ExpT()) !.
+    Def{name} : DefT([], [ExpT()], ExpT()) !.
 
 
   defNames[[ name@"int" ^(s)]] :=
     Def{name} <- s,
-    Def{name} : DefT(NoParamT(), [TermT()], ExpT()) !.
+    Def{name} : DefT([], [TermT()], ExpT()) !.
 
   defNames[[ name@"char" ^(s)]] :=
     Def{name} <- s,
-    Def{name} : DefT(NoParamT(), [TermT()], ExpT()) !.
+    Def{name} : DefT([], [TermT()], ExpT()) !.
 
   defNames[[ name@"ineg" ^(s)]] :=
     Def{name} <- s,
-    Def{name} : DefT(NoParamT(), [ExpT()], ExpT()) !.
+    Def{name} : DefT([], [ExpT()], ExpT()) !.
 
   defNames[[ name@"iadd" ^(s)]] :=
     Def{name} <- s,
-    Def{name} : DefT(NoParamT(), [ExpT(), ExpT()], ExpT()) !.
+    Def{name} : DefT([], [ExpT(), ExpT()], ExpT()) !.
 
   defNames[[ name@"imul" ^(s)]] :=
     Def{name} <- s,
-    Def{name} : DefT(NoParamT(), [ExpT(), ExpT()], ExpT()) !.
+    Def{name} : DefT([], [ExpT(), ExpT()], ExpT()) !.
 
   defNames[[ name@"isub" ^(s)]] :=
     Def{name} <- s,
-    Def{name} : DefT(NoParamT(), [ExpT(), ExpT()], ExpT()) !.
+    Def{name} : DefT([], [ExpT(), ExpT()], ExpT()) !.
 
   defNames[[ name@"idiv" ^(s)]] :=
     Def{name} <- s,
-    Def{name} : DefT(NoParamT(), [ExpT(), ExpT()], ExpT()) !.
+    Def{name} : DefT([], [ExpT(), ExpT()], ExpT()) !.
 
   defNames[[ name@"imod" ^(s)]] :=
     Def{name} <- s,
-    Def{name} : DefT(NoParamT(), [ExpT(), ExpT()], ExpT()) !.
+    Def{name} : DefT([], [ExpT(), ExpT()], ExpT()) !.
 
   defNames[[ name@"ieq" ^(s)]] :=
     Def{name} <- s,
-    Def{name} : DefT(NoParamT(), [ExpT(), ExpT()], ExpT()) !.
+    Def{name} : DefT([], [ExpT(), ExpT()], ExpT()) !.
 
   defNames[[ name@"ilt" ^(s)]] :=
     Def{name} <- s,
-    Def{name} : DefT(NoParamT(), [ExpT(), ExpT()], ExpT()) !.
+    Def{name} : DefT([], [ExpT(), ExpT()], ExpT()) !.
 
   defNames[[ name@"igt" ^(s)]] :=
     Def{name} <- s,
-    Def{name} : DefT(NoParamT(), [ExpT(), ExpT()], ExpT()) !.
+    Def{name} : DefT([], [ExpT(), ExpT()], ExpT()) !.
 
   defNames[[ name@"ior" ^(s)]] :=
     Def{name} <- s,
-    Def{name} : DefT(NoParamT(), [ExpT(), ExpT()], ExpT()) !.
+    Def{name} : DefT([], [ExpT(), ExpT()], ExpT()) !.
 
   defNames[[ name@"iand" ^(s)]] :=
     Def{name} <- s,
-    Def{name} : DefT(NoParamT(), [ExpT(), ExpT()], ExpT()) !.
+    Def{name} : DefT([], [ExpT(), ExpT()], ExpT()) !.
 
   defNames[[ name@"ixor" ^(s)]] :=
     Def{name} <- s,
-    Def{name} : DefT(NoParamT(), [ExpT(), ExpT()], ExpT()) !.
+    Def{name} : DefT([], [ExpT(), ExpT()], ExpT()) !.
 
 
   defNames[[ name@"is-int" ^(s)]] :=
     Def{name} <- s,
-    Def{name} : DefT(NoParamT(), [ExpT()], ExpT()) !.
+    Def{name} : DefT([], [ExpT()], ExpT()) !.
 
   defNames[[ name@"is-frame" ^(s)]] :=
     Def{name} <- s,
-    Def{name} : DefT(NoParamT(), [ExpT()], ExpT()) !.
+    Def{name} : DefT([], [ExpT()], ExpT()) !.
 
   defNames[[ name@"is-closure" ^(s)]] :=
     Def{name} <- s,
-    Def{name} : DefT(NoParamT(), [ExpT()], ExpT()) !.
+    Def{name} : DefT([], [ExpT()], ExpT()) !.
 
   defNames[[ name@"is-continuation" ^(s)]] :=
     Def{name} <- s,
-    Def{name} : DefT(NoParamT(), [ExpT()], ExpT()) !.
+    Def{name} : DefT([], [ExpT()], ExpT()) !.
 
 
   defNames[[ name@"new" ^(s)]] :=
     Def{name} <- s,
-    Def{name} : DefT(NoParamT(), [ExpT()], ExpT()) !.
+    Def{name} : DefT([], [ExpT()], ExpT()) !.
 
   defNames[[ name@"size" ^(s)]] :=
     Def{name} <- s,
-    Def{name} : DefT(NoParamT(), [ExpT()], ExpT()) !.
+    Def{name} : DefT([], [ExpT()], ExpT()) !.
 
   defNames[[ name@"link" ^(s)]] :=
     Def{name} <- s,
-    Def{name} : DefT(NoParamT(), [ExpT(), PathOrExpT(), LinkT()], InstrT()) !.
+    Def{name} : DefT([], [ExpT(), PathOrExpT(), LinkT()], InstrT()) !.
 
   defNames[[ name@"set" ^(s)]] :=
     Def{name} <- s,
-    Def{name} : DefT(NoParamT(), [ExpT(), PathOrExpT(), ExpT()], InstrT()) !.
+    Def{name} : DefT([], [ExpT(), PathOrExpT(), ExpT()], InstrT()) !.
 
   defNames[[ name@"mkcur" ^(s)]] :=
     Def{name} <- s,
-    Def{name} : DefT(NoParamT(), [ExpT()], InstrT()) !.
+    Def{name} : DefT([], [ExpT()], InstrT()) !.
 
   defNames[[ name@"getcur" ^(s)]] :=
     Def{name} <- s,
-    Def{name} : DefT(NoParamT(), [], ExpT()) !.
+    Def{name} : DefT([], [], ExpT()) !.
 
   defNames[[ name@"get" ^(s)]] :=
     Def{name} <- s,
-    Def{name} : DefT(NoParamT(), [ExpT(), PathOrExpT()], ExpT()) !.
+    Def{name} : DefT([], [ExpT(), PathOrExpT()], ExpT()) !.
 
   defNames[[ name@"is-empty" ^(s)]] :=
     Def{name} <- s,
-    Def{name} : DefT(NoParamT(), [ExpT(), PathT()], ExpT()) !.
+    Def{name} : DefT([], [ExpT(), PathT()], ExpT()) !.
 
   defNames[[ name@"resolve" ^(s)]] :=
     Def{name} <- s,
-    Def{name} : DefT(NoParamT(), [TermT()], PathT()) !.
+    Def{name} : DefT([], [TermT()], PathT()) !.
     
   defNames[[ name@"length" ^(s)]] :=
     Def{name} <- s,
-    Def{name} : DefT(NoParamT(), TermT(), IntT()) !.
+    Def{name} : DefT([], TermT(), IntT()) !.

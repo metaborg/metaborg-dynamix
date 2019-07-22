@@ -3,4 +3,5 @@ module dynamix/Compile
 menus
   
   menu: "Dynamix" (openeditor)
-    action: "Compile"       = dnx-compile-to-fvm
+    action: "Compile to FVM"    = dnx-compile-to-fvm
+    action: "Compile show flat" = dnx-compile

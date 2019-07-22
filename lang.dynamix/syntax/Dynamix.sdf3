@@ -28,41 +28,46 @@ context-free syntax
    <Block>
  >
  
- DefParam.Param = <[<DEFNAME>]>
- DefParamType.ParamType = <[<{Type "->"}*> -\> <Type>]>
+ DefParam.Param = <[<{DEFNAME ", "}+>]>
+ DefParamTypeList.ParamTypeList = <[<{DefParamType ", "}+>]>
  
- Definition.TypeDef = <<DEFNAME><DefParamType?>:: <{Type "->"}*> -\> <Type>>
+ DefParamType.ParamType = <<{Type "->"}*> -\> <Type>>
+ Definition.TypeDef = <<DEFNAME><DefParamTypeList?>:: <{Type "->"}*> -\> <Type>>
  Block.Block = <   
   <{Instruction ";"}+>
  >
  
- Pattern.Var = <<ID>>
  
- Type.Term = <term>
+ Type.Term = <ast>
  Type.Code = <code>
- Type.Exp = <exp>
+ Type.Exp = <val>
  Type.Instr = <instr>
  Type.Path = <path>
  Type.Return = <return>
  
- Pattern.Pat = <<ID>(<{Pattern ","}*>)>
- Pattern.List = <[<{Pattern ","}*>]>
- Pattern.ListTail = <[<{Pattern ","}+> | <Pattern>]>
- Pattern.ListLast = <[<Pattern> || <{Pattern ","}+>]>
+ Pattern.DNXTerm_Var = <<ID>>
+ Pattern.DNXTerm_Int = INT
+ Pattern.DNXTerm_String = STRING
+ Pattern.DNXTerm_Pat = <<ID>(<{Pattern ","}*>)>
+ Pattern.DNXTerm_List = <[<{Pattern ","}*>]>
+ Pattern.DNXTerm_ListTail = <[<{Pattern ","}+> | <Pattern>]>
+ Pattern.DNXTerm_ListLast = <[<Pattern> || <{Pattern ","}+>]>
  
- Instruction.Bind = [
+ Instruction.DNX_Bind = [
   [ID] <- [Exp]
  ]
- Instruction.Return = <return(<{Exp ","}*>)> {prefer}
- Instruction.Exp = Exp
+ Instruction.DNX_Return = <return(<Exp>)> {prefer}
+ Instruction.DNX_Exp = Exp
  
- Exp.Call = <<DEFNAME><DefParam?>(<{Exp ","}*>)>
- Exp.CallPrim = <<PRIMNAME><DefParam?>(<{Exp ","}*>)> {prefer}
- Exp.Var = <<ID>>
- Exp.Path = <[<{Exp ","}*>]>
- Exp.Int = INT
+ Exp.DNX_Call = <<DEFNAME><DefParam?>(<{Exp ","}*>)>
+ Exp.DNX_CallPrim = <<PRIMNAME><DefParam?>(<{Exp ","}*>)> {prefer}
+ Exp.DNX_Var = <<ID>>
+ Exp.DNX_Path = <[<{Exp ","}*>]>
  
- Exp.Quote = [<[Block]>]
- Exp.Splice = <~<Exp>>
- Exp.Link = <&<LINKNAME>>
- Exp.Cont = <$<CONTNAME>>
+ Exp.DNX_Quote = [<[Block]>]
+ Exp.DNX_Splice = <~<Exp>>
+ Exp.DNX_Link = <&<LINKNAME>>
+ Exp.DNX_Cont = <$<CONTNAME>>
+ 
+ Exp.DNX_Term = Pattern {avoid}
+ 

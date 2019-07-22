@@ -1,0 +1,33 @@
+module fvm-primitive
+
+imports
+  signatures/fvm-roger-sig
+  signatures/Dynamix-sig
+
+rules
+  dnx-primitive-cont-label: name -> FVM_Cont(name)
+  dnx-primitive-assign: (var, val) -> ([RGR_Assign(var, val)], None())
+  dnx-primitive-int-constant: n -> RGR_IntVal(n)
+  dnx-primitive-mk-label: name -> FVM_Label(name)
+  dnx-primitive-mk-header: items -> FVM_Header(<map(dnx-primitive-mk-header-item)> items)
+    with
+      <set-counter> ("link", 0);
+      <set-counter> ("cont", 0)
+      
+  dnx-primitive-mk-header-item: DNX_Link(label) -> FVM_LinkAlias(FVM_Link(label), <int-to-string> <next-counter> "link")
+  dnx-primitive-mk-header-item: DNX_Cont(name)  -> FVM_ContAlias(FVM_Cont(name), <int-to-string> <next-counter> "cont")
+
+
+rules
+  dnx-primitive-call: ("int", [n]) -> ([], RGR_ILoad(<string-to-int; int-to-string> n))
+  
+  dnx-primitive-call: ("iadd", [e1, e2]) -> ([], RGR_IAdd(e1, e2))
+  dnx-primitive-call: ("getCF", [e1, e2]) -> ([], RGR_ContGet(e1, e2))
+  dnx-primitive-call: ("curCF", []) -> ([], RGR_ContThis())
+  
+  dnx-primitive-call: ("print", [e1]) -> ([RGR_Stmt(RGR_Print(e1))], None())
+  dnx-primitive-call: ("returnCF", [e1]) -> ([RGR_ContReturn(e1)], None())
+  dnx-primitive-call: ("push", [e1, e2]) -> ([RGR_Stmt(RGR_ContTransfer([e1], e2))], None())
+  
+  
+  dnx-primitive-call: (name, _) -> <debug; fail> ${[Dynamix] Missing primitive implementation for '{name}'}

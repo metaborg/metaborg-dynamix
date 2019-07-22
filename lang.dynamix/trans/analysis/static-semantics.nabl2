@@ -37,21 +37,20 @@ rules
     Def{name} <- s,
     type [[ret ^(s) : retty]],
     Map1T(type) [[args ^(s) : argty]],
-    paramTypeDecl [[paramType ^(s) : paramty]],
+    Map1T(paramTypeDecl) [[paramType ^(s) : paramty]],
     Def{name}:DefT(paramty, argty, retty)!,
     distinct/name D(s)/Def | error $[Multiple type signatures for rule [name]] @NAMES.
   
-  paramTypeDecl [[None() ^(s) : NoParamT()]].
-  paramTypeDecl [[Some(ParamType(args, ret)) ^(s) : ParamT(argty, retty)]] :=
+  paramTypeDecl [[ParamType(args, ret) ^(s) : ParamT(argty, retty)]] :=
     type [[ret ^(s) : retty]],
     Map1T(type) [[args ^(s) : argty]].
       
   
-  initLabels [[Link(lbl) ^(s) ]] :=
+  initLabels [[DNX_Link(lbl) ^(s) ]] :=
     LinkOrCont{lbl} <- s,
     LinkOrCont{lbl}: LinkT().
     
-  initLabels [[Cont(lbl) ^(s) ]] :=
+  initLabels [[DNX_Cont(lbl) ^(s) ]] :=
     LinkOrCont{lbl} <- s,
     LinkOrCont{lbl}: ContT().
     
@@ -61,17 +60,16 @@ rules
     d:DefT(dparamty, dtys, drty),
     new def_s,
     def_s ---> s,
-    defParam [[param ^(def_s) : paramty]],
+    Map1T(defParam) [[param ^(def_s) : paramty]],
     Map1T(term) [[args ^(def_s) : tys]],
     Fold3T(instr) [[instrs ^(q, def_s, _) : rty]],
     dtys == tys,
     dparamty == paramty,
     rty <sub? drty | error $[Wrong return type. Expected [drty], but got [rty]] @name.
   
-  defParam [[None() ^(s) : NoParamT() ]].
-  defParam [[Some(Param(name)) ^(s) : ParamT(argty, rty) ]] :=
+  defParam [[name ^(s) : ParamT(argty, rty) ]] :=
     Def{name} <- s,
-    Def{name}:DefT(NoParamT(), argty, rty)!.
+    Def{name}:DefT([], argty, rty)!.
     
   type[[ Term()   ^(s) : TermT()   ]].
   type[[ Code()   ^(s) : CodeT()   ]].
@@ -81,35 +79,39 @@ rules
   type[[ Return() ^(s) : ReturnT() ]].
   
   
-  term[[Var(name) ^(s) : ty]] :=
+  term[[DNXTerm_Var(name) ^(s) : ty]] :=
     Var{name} <- s,
     Var{name}:ty!.
     
-  term[[List(elems) ^(s) : TermT()]] :=
+  term[[DNXTerm_List(elems) ^(s) : TermT()]] :=
     termMap [[elems ^(s) : TermT()]].
     
-  term[[ListTail(elems, tail) ^(s) : TermT()]] :=
+  term[[DNXTerm_ListTail(elems, tail) ^(s) : TermT()]] :=
     termMap [[elems ^(s) : TermT()]],
     term [[tail ^(s) : TermT()]].
     
-  term[[ListLast(init, last) ^(s) : TermT()]] :=
+  term[[DNXTerm_ListLast(init, last) ^(s) : TermT()]] :=
     termMap [[last ^(s) : TermT()]],
     term [[init ^(s) : TermT()]].
     
-  term[[Pat(name, args) ^(s) : TermT()]] :=
+  term[[DNXTerm_Pat(name, args) ^(s) : TermT()]] :=
     termMap [[args ^(s) : TermT()]].
+    
+  term[[DNXTerm_Int(_) ^(s) : TermT()]].
+    
+  term[[DNXTerm_String(_) ^(s) : TermT()]].
   
   termMap [[ [] ^(s) : ty ]].
   termMap [[ [h|t] ^(s) : ty ]] :=
     term [[h ^(s) : ty]], termMap [[t ^(s) : ty ]].
   
-  Fold3T(X) [[ [Return(args)] ^(q, s, qp) : ExpT() ]] :=
-    rty == [ExpT()] | error $[A value of type [rty] cannot be returned by a definition],
-    Map3T(exp) [[args ^(q, s, qp) : rty]].
+  Fold3T(X) [[ [DNX_Return(arg)] ^(q, s, qp) : ExpT() ]] :=
+    rty == ExpT() | error $[A value of type [rty] cannot be returned by a definition],
+    exp [[arg ^(q, s, qp) : rty]].
     
-  Fold3T(X) [[ [Return(arg) | tail] ^(q, s, qp) : ExpT() ]] :=
-    rty == [ExpT()] | error $[A value of type [rty] cannot be returned by a definition],
-    Map3T(exp) [[args ^(q, s, qp) : rty]],
+  Fold3T(X) [[ [DNX_Return(arg) | tail] ^(q, s, qp) : ExpT() ]] :=
+    rty == ExpT() | error $[A value of type [rty] cannot be returned by a definition],
+    exp [[arg ^(q, s, qp) : rty]],
     Fold3T(instr) [[tail ^(q, s, qp) : _]],
     false | error $[Dead code] @tail.
     
@@ -121,7 +123,7 @@ rules
     Fold3T(X)[[ t ^(a', b', c') : ty ]].
   
   
-  instr [[ Bind(name, exp) ^(q, s, qp, q', def_s, qp') : InstrT() ]] :=
+  instr [[ DNX_Bind(name, exp) ^(q, s, qp, q', def_s, qp') : InstrT() ]] :=
     q == q', qp == qp', 
     exp [[exp ^(q, s, qp) : expty]],
     new def_s,
@@ -129,54 +131,56 @@ rules
     Var{name} <- def_s,
     Var{name}:expty!.
     
-  instr [[ Exp(exp) ^(q, s, qp, q', s', qp') : defrty ]] :=
+  instr [[ DNX_Exp(exp) ^(q, s, qp, q', s', qp') : defrty ]] :=
     q == q', s == s', qp == qp', 
     exp[[exp ^(q, s, qp) : defrty]].
     
-  exp [[Int(_) ^(q, s, qp) : IntT()]].
-  exp [[Path(_) ^(q, s, qp) : PathT() ]].
+  exp [[DNX_Path(_) ^(q, s, qp) : PathT() ]].
   
-  exp [[Link(lbl) ^(q, s, qp) : ty ]] :=
+  exp [[DNX_Link(lbl) ^(q, s, qp) : ty ]] :=
     LinkOrCont{lbl} -> s,
     LinkOrCont{lbl} |-> d | error $[Link with label [lbl] is not defined],
     d : ty.
   
-  exp [[Cont(lbl) ^(q, s, qp) : ty ]] :=
+  exp [[DNX_Cont(lbl) ^(q, s, qp) : ty ]] :=
     LinkOrCont{lbl} -> s,
     LinkOrCont{lbl} |-> d | error $[Continuation with label [lbl] is not defined],
     d : ty.
   
-  exp [[Var(name) ^(q, s, qp) : ty ]] :=
+  exp [[DNX_Var(name) ^(q, s, qp) : ty ]] :=
     Var{name} -> s,
     Var{name} |-> d | error $[Variable [name] not declared] @name,
     d:ty.
     
-  exp [[Call(name, param, args) ^(q, s, qp) : rty ]] :=
+  exp [[DNX_Call(name, param, args) ^(q, s, qp) : rty ]] :=
     Def{name} -> s,
     Def{name} |-> d | error $[Rule [name] not declared] @name,
     d:DefT(dparamty, defargtys, defrty)!,
     Map3T(exp) [[args ^(q, s, qp) : argtys]],
-    expParam [[param ^(s) : paramty]],
+    Map1T(expParam) [[param ^(s) : paramty]],
     rty == defrty,
     paramty == dparamty,
     argtys <sub? defargtys | error $[Wrong argument type. Expected [defargtys], found [argtys]].
      
-  expParam [[None() ^(s) : NoParamT() ]].
-  expParam [[Some(Param(name)) ^(s) : ParamT(argty, retty) ]] :=
+  expParam [[name ^(s) : ParamT(argty, retty) ]] :=
     Def{name} -> s,
     Def{name} |-> d | error $[Rule [name] not defined],
     d:DefT(dparamty, dargty, dretty),
-    dparamty == NoParamT() | error $[Nesting parameterized rules is not allowed],
+    dparamty == [] | error $[Nesting parameterized rules is not allowed],
     argty == dargty, retty == dretty.
   
-  exp [[Quote(Block(instrs)) ^(q, s, qp) : ty]] :=
+  exp [[DNX_Quote(Block(instrs)) ^(q, s, qp) : ty]] :=
     new quote_s, quote_s ---> q,
     qty == ty | error $[Found [qty], expected [ty]],
     Fold3T(instr) [[instrs ^(q, quote_s, s) : qty]].
     
-  exp [[Splice(Var(name)) ^(q, s, qp) : ty ]] :=
+  exp [[DNX_Splice(Var(name)) ^(q, s, qp) : ty ]] :=
     Var{name} -> qp,
     Var{name} |-> d | error $[Variable [name] not declared] @name,
     d:sty,
     ty == sty.
+    
+  exp [[DNX_Term(term) ^(q, s, qp) : ty ]] := term [[term ^(s) : ty]].
+  
+  
     

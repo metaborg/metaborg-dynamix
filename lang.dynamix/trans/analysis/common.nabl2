@@ -19,7 +19,6 @@ signature
      CodeT : Type
      
      ParamT: list(Type) * Type -> Type
-     NoParamT: Type
      
     
     relations

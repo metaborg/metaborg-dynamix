@@ -1,0 +1,41 @@
+module dnx-match
+
+imports
+  signatures/Dynamix-sig
+  
+  codegen/dnx-common
+  
+rules
+  dnx-match-rule(|args, a_params): DefCase(arg_patterns, d_params, body) -> Some((binds, zipped_params, body))
+    where
+      zipped := <zip> (args, arg_patterns);
+      zipped_params := <zip> (d_params, a_params);
+      binds := <mapconcat(dnx-match-arg)> zipped
+      
+  
+  dnx-match-arg: (arg, DNXTerm_Pat(p_name, p_args)) -> binds
+    where
+      (a_name, a_args) := <explode-term> arg;
+      <equal> (a_name, p_name);
+      <equal> (<length> a_args, <length> p_args);
+      
+      zipped := <zip> (a_args, p_args);
+      binds := <mapconcat(dnx-match-arg)> zipped
+      
+  dnx-match-arg: (arg, DNXTerm_Var(name)) -> [(name, arg)]
+  
+  dnx-match-arg: (arg, DNXTerm_List(elems)) -> binds
+    where
+      <is-list> arg; <equal> (<length> elems, <length> arg);
+      binds :=  <zip; mapconcat(dnx-match-arg)> (arg, elems)
+     
+  dnx-match-arg: (arg, DNXTerm_ListTail(elems, tail)) -> binds
+    where
+      <is-list> arg; <geq> (<length> arg, <length> elems);
+      binds := <dnx-match-list-tail> (arg, <concat> [elems, [tail]])
+      
+  dnx-match-arg: (arg, e) -> <fail> // No match found
+  
+  dnx-match-list-tail: (list, [pattern]) -> <dnx-match-arg> (list, pattern)
+  dnx-match-list-tail: ([ah | at], [ph | pt]) -> 
+    <concat> [<dnx-match-arg> (ah, ph), <dnx-match-list-tail> (at, pt)]

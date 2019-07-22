@@ -9,32 +9,42 @@ imports
   signatures/Dynamix-sig
 
   pp
-
-signature
-  sorts S
-  constructors    
-    Module : STRING * [Import] * [STRING] * [Def] * [Def]  * [STRING] -> S
-    
+  codegen/dnx-common
+  
 rules // Analysis
-
-  editor-analyze = nabl2-analyze(collect-def-types; collect-prim-names; remove-prim-calls); store-dnx-spec 
+  desugar = collect-def-types; collect-prim-names; remove-prim-calls; desugar-call-params-all
+  editor-analyze = nabl2-analyze(desugar); store-dnx-spec 
 
 rules // Debugging
-  
   // Prints the abstract syntax ATerm of a selection.
   debug-show-aterm: (selected, _, _, path, project-path) -> (filename, result)
     with filename := <guarantee-extension(|"aterm")> path
        ; result   := selected
-
+  
+  debug-show-desugared-aterm: (_, _, ast, path, project-path) -> (filename, result)
+    with filename := <guarantee-extension(|"desuagered.aterm")> path
+       ; result   := <desugar> ast
+       
   // Prints the analyzed annotated abstract syntax ATerm of a selection.
   debug-show-analyzed: (selected, _, _, path, project-path) -> (filename, result)
     with filename := <guarantee-extension(|"analyzed.aterm")> path
        ; result   := selected
 
 rules
+  desugar-call-params-all: mod -> <topdown(try(desugar-call-params))> mod
+  
+  desugar-call-params: Def(name, None(), args, body) -> Def(name, [], args, body)
+  desugar-call-params: Def(name, Some(Param(params)), args, body) -> Def(name, params, args, body)
+  
+  desugar-call-params: DNX_Call(name, None(), args) -> DNX_Call(name, [], args)
+  desugar-call-params: DNX_Call(name, Some(Param(params)), args) -> DNX_Call(name, params, args)
+  
+  desugar-call-params: TypeDef(name, None(), argsty, retty) -> TypeDef(name, [], argsty, retty)
+  desugar-call-params: TypeDef(name, Some(ParamTypeList(params)), argsty, retty) -> TypeDef(name, params, argsty, retty)
+  
   collect-def-types: Module(name, imports, defs) -> Module(name, imports, [], Defs(type_decls), Defs(def_decls), candl)
     where
-      candl := [Link("P"), Link("I"), Cont("ret"), Cont("exc"), Cont("next")];
+      candl := [DNX_Link("P"), DNX_Link("I"), DNX_Cont("ret"), DNX_Cont("exc"), DNX_Cont("next")];
       all_defs := <mapconcat((\ Defs(d) -> d \))> defs;
       def_decls  := <filter(?Def(_, _, _, _))> all_defs;
       type_decls := <filter(?TypeDef(_, _, _, _))> all_defs
@@ -42,9 +52,9 @@ rules
       
   collect-prim-names: Module(name, imports, _, types, defs, candl) -> Module(name, imports, prim_names, types, defs, candl)
     where
-      prim_names := <collect-all((\CallPrim(name, param, args) -> name\))>
+      prim_names := <collect-all((\DNX_CallPrim(name, param, args) -> name\))>
       
-  remove-prim-calls = topdown(try((\CallPrim(name, param, args) -> Call(name, param, args)\)))
+  remove-prim-calls = topdown(try((\DNX_CallPrim(name, param, args) -> DNX_Call(name, param, args)\)))
       
       
 rules
@@ -54,10 +64,26 @@ rules
       main := <filter(get-main-ast(|dnx_main_name))> <collect-all(?Full(_,_,_,_,_))> files;
       <store-dnx-main(|dnx_main_name)> main
       
-  store-dnx-main(|name): [Module(_,_,_, types, defs, candl)] -> e 
+  store-dnx-main(|name): [Module(_,_,_, Defs(types), Defs(defs), candl)] -> e 
     with
+      // TODO: Import all the imports recursively
+      all_types := types;
+      all_defs := defs;
+      
       // TODO: Check if this path works on Windows
-      e := <store-term(|"src-gen/dynamix/spec.aterm")> (types, defs, candl)
+      grouped_defs := <map(make-normDef(|all_defs))> all_types;
+      e := <store-term(|"src-gen/dynamix/spec.aterm")> NormModule(None(), candl, <resolve-binds-all> grouped_defs)
+      
+  resolve-binds-all = id
+//  resolve-binds-all: term -> <topdown(try(resolve-binds))> term
+//  resolve-binds: bind@Bind(var, val) -> Bind(ExpVar(var), val)
+//    where
+//      <debug> bind;
+//      a := <debug> <nabl2-get-ast-analysis> var;
+//      occ := <debug> <nabl2-mk-occurrence(|"Var")> var;
+//      type := <debug><nabl2-get-type(|a)> occ
+      // TypeOf var == ExpT
+      
       
   store-dnx-main(|name): [] -> [] with <debug(!"[Dynamix] ")> $[No module with name '[name]']
   store-dnx-main(|name): e -> e
@@ -65,7 +91,7 @@ rules
   store-term(|fname): term -> out
     where
       <debug(!"[Dynamix] ")> $<Writing to file '<fname>'>;
-      out := <write-string-to-file> (fname, <write-to-string > term)
+      out := <write-string-to-file> (fname, <write-to-string> <strip-annos> term)
       
   store-term(|fname): term -> term where <debug(!"[Dynamix] ")> $<Failed to write to file <fname>>
 
@@ -83,4 +109,12 @@ rules
     where
       <equal> (main, <strip-annos> mname)
   
+  make-normDef(|defs): type@TypeDef(name, _, _, _) -> NormDef(<strip-annos> name, type, def_cases)
+    where
+      cname := <strip-annos> name;
+      def_cases := <filter(
+      					(\ Def(dname, param, args, Block(body)) -> DefCase(args, param, body) 
+      					     where <equal> (<strip-annos> dname, cname)
+      					 \))> defs;
+      <geq> (<length> def_cases, 1)
   
