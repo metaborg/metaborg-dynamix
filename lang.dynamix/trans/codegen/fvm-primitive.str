@@ -2,6 +2,7 @@ module fvm-primitive
 
 imports
   signatures/fvm-roger-sig
+  signatures/fvm-common-sig
   signatures/Dynamix-sig
 
 rules
@@ -18,16 +19,48 @@ rules
   dnx-primitive-mk-header-item: DNX_Cont(name)  -> FVM_ContAlias(FVM_Cont(name), <int-to-string> <next-counter> "cont")
 
 
-rules
-  dnx-primitive-call: ("int", [n]) -> ([], RGR_ILoad(<string-to-int; int-to-string> n))
-  
-  dnx-primitive-call: ("iadd", [e1, e2]) -> ([], RGR_IAdd(e1, e2))
-  dnx-primitive-call: ("getCF", [e1, e2]) -> ([], RGR_ContGet(e1, e2))
+rules // Expressions
+  dnx-primitive-call: ("pop", [e1]) -> ([], RGR_ContRGet(e1))
   dnx-primitive-call: ("curCF", []) -> ([], RGR_ContThis())
+  dnx-primitive-call: ("newCF", [e1, e2, e3]) -> ([], RGR_ContNew(e1, e2, e3))
+  dnx-primitive-call: ("getCF", [e1, e2]) -> ([], RGR_ContGet(e1, e2))
+  dnx-primitive-call: ("unpackCF", [e1]) -> ([], RGR_ContUnpack(e1))
   
-  dnx-primitive-call: ("print", [e1]) -> ([RGR_Stmt(RGR_Print(e1))], None())
-  dnx-primitive-call: ("returnCF", [e1]) -> ([RGR_ContReturn(e1)], None())
-  dnx-primitive-call: ("push", [e1, e2]) -> ([RGR_Stmt(RGR_ContTransfer([e1], e2))], None())
+  dnx-primitive-call: ("char", [c]) -> ([], RGR_CharLoad(c))
+  dnx-primitive-call: ("int", [n]) -> ([], RGR_ILoad(<string-to-int; int-to-string> n))
+  dnx-primitive-call: ("ineg", [e1]) -> ([], RGR_INeg(e1))
+  dnx-primitive-call: ("iadd", [e1, e2]) -> ([], RGR_IAdd(e1, e2))
+  dnx-primitive-call: ("imul", [e1, e2]) -> ([], RGR_IMul(e1, e2))
+  dnx-primitive-call: ("isub", [e1, e2]) -> ([], RGR_ISub(e1, e2))
+  dnx-primitive-call: ("idiv", [e1, e2]) -> ([], RGR_IDiv(e1, e2))
+  dnx-primitive-call: ("imod", [e1, e2]) -> ([], RGR_IMod(e1, e2))
+  dnx-primitive-call: ("ieq",  [e1, e2]) -> ([], RGR_IEq(e1, e2))
+  dnx-primitive-call: ("ilt",  [e1, e2]) -> ([], RGR_ILt(e1, e2))
+  dnx-primitive-call: ("igt",  [e1, e2]) -> ([], RGR_IGt(e1, e2))
+  dnx-primitive-call: ("ior",  [e1, e2]) -> ([], RGR_IOr(e1, e2))
+  dnx-primitive-call: ("ixor", [e1, e2]) -> ([], RGR_IXor(e1, e2))
+  dnx-primitive-call: ("iand", [e1, e2]) -> ([], RGR_IAnd(e1, e2))
   
+  dnx-primitive-call: ("is-int",   [e1]) -> ([], RGR_IsInt(e1))
+  dnx-primitive-call: ("is-frame", [e1]) -> ([], RGR_IsFrame(e1))
+//  dnx-primitive-call: ("is-closure", [e1]) -> ([], RGR_IsClosure(e1))
+  dnx-primitive-call: ("is-continuation", [e1]) -> ([], RGR_IsCont(e1))
   
+  dnx-primitive-call: ("new",  [e1]) -> ([], RGR_New(e1))
+  dnx-primitive-call: ("size", [e1]) -> ([], RGR_FSize(e1))
+  dnx-primitive-call: ("get",  [e1, e2]) -> ([], RGR_Get(e1, e2))
+  dnx-primitive-call: ("is-empty", [e1, e2]) -> ([], RGR_IsEmpty(e1, e2))
+  dnx-primitive-call: ("cur", []) -> ([], RGR_ScopeGetCurrent())
+  
+rules // Statements
+  stmt: instrs -> (<map( (\ instr -> RGR_Stmt(instr) \) )> instrs, None())
+  dnx-primitive-call: ("link", [e1, e2, e3]) -> <stmt> [RGR_Link(e1, e2, e3)]
+  dnx-primitive-call: ("set", [e1, e2, e3]) -> <stmt> [RGR_Set(e1, e2, e3)]
+  dnx-primitive-call: ("empty", [e1, e2]) -> <stmt> [RGR_Empty(e1, e2)]
+  dnx-primitive-call: ("push", [e1, e2]) -> <stmt> [RGR_ContTransfer([e1], e2)]
+  dnx-primitive-call: ("setCF", [e1, e2, e3]) -> <stmt> [RGR_ContSet(e1, e2, e3)]
+  dnx-primitive-call: ("mkcur", [e1]) -> <stmt> [RGR_ScopeSetCurrent(e1)]
+  dnx-primitive-call: ("print", [e1]) -> <stmt> [RGR_Print(e1)]
+  dnx-primitive-call: ("printc", [e1]) -> <stmt> [RGR_PrintChar(e1)]
+ 
   dnx-primitive-call: (name, _) -> <debug; fail> ${[Dynamix] Missing primitive implementation for '{name}'}

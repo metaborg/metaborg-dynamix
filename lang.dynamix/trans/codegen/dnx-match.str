@@ -23,6 +23,14 @@ rules
       binds := <mapconcat(dnx-match-arg)> zipped
       
   dnx-match-arg: (arg, DNXTerm_Var(name)) -> [(name, arg)]
+  dnx-match-arg: (arg, DNXTerm_String(string)) -> []
+    where
+      <is-string> arg;
+      <equal> (<strip-annos> arg, <unquote(!"\"")> string)
+//  dnx-match-arg: (arg, DNXTerm_Int(val)) -> []
+//    where
+//      <is-int> arg;
+//      <equal> <debug> (<strip-annos> arg, val)
   
   dnx-match-arg: (arg, DNXTerm_List(elems)) -> binds
     where

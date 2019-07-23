@@ -6,9 +6,10 @@ imports
   pp
   outline
   analysis
+  dynamix/compile
 
 rules // Debugging
-  
+    
   debug-show-aterm:
     (node, _, _, path, project-path) -> (filename, result)
     with

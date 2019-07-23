@@ -28,8 +28,6 @@ signature
      
 rules
   initTypes [[ _ ^(_) ]] :=
-  	ExpT()   <sub! CodeT(),
-  	InstrT() <sub! CodeT(),
   	PathT()  <sub! PathOrExpT(),
   	ExpT()   <sub! PathOrExpT(),
   	IntT()   <sub! TermT(),

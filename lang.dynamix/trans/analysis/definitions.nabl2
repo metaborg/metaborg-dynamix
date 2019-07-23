@@ -26,11 +26,15 @@ rules
     Def{name} <- s,
     Def{name} : DefT([], [ExpT()], InstrT()) !.
 
+   defNames[[ name@"jump" ^(s)]] :=
+    Def{name} <- s,
+    Def{name} : DefT([], [CodeT()], InstrT()).
+    
   defNames[[ name@"jumpz" ^(s)]] :=
     Def{name} <- s,
-    Def{name} : DefT([], [ExpT(), then, else], then),
-    then <sub? CodeT(),
-    then == else | error $[Both branches in the jump should have the same type].
+    Def{name} : DefT([], [ExpT(), InstrT(), InstrT()], InstrT()).
+//    then <sub? CodeT(),
+//    then == else | error $[Both branches in the jump should have the same type].
     // m == then meet else, m != CodeT()
     // out_mult is mulOrd.lub of (e1_mult,e2_mult),
 
@@ -48,7 +52,7 @@ rules
 
   defNames[[ name@"newCF" ^(s)]] :=
     Def{name} <- s,
-    Def{name} : DefT([], [InstrT(), TermT()], ExpT()) !.
+    Def{name} : DefT([], [ExpT(), InstrT(), TermT()], ExpT()) !.
 
   defNames[[ name@"getCF" ^(s)]] :=
     Def{name} <- s,
@@ -157,7 +161,7 @@ rules
     Def{name} <- s,
     Def{name} : DefT([], [ExpT()], InstrT()) !.
 
-  defNames[[ name@"getcur" ^(s)]] :=
+  defNames[[ name@"cur" ^(s)]] :=
     Def{name} <- s,
     Def{name} : DefT([], [], ExpT()) !.
 

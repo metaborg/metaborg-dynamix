@@ -25,6 +25,7 @@ lexical syntax
   EOF            =  
 
 lexical syntax
+  PRIMNAME = "jump"
   PRIMNAME = "empty"
   PRIMNAME = "push"
   PRIMNAME = "pop"
