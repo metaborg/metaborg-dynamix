@@ -1,0 +1,25 @@
+module compile
+
+imports
+  codegen/dnx-compile
+  codegen/fvm-primitive
+  
+  fvm-util
+  fvm-common
+  
+rules // Debugging
+    
+  dnx-compile-to-fvm:
+    (_, _, ast, path, project-path) -> (filename, result)
+    with
+      filename := <guarantee-extension(|"dnx.rgr")> path
+    ; fname    := <base-filename; remove-extension> path
+    ; (header, instr) := <dnx-compile> ast
+    ; result := <pp-framevm> <rgr-assign-registers> <rgr-from-flat> (header, [(<dnx-primitive-mk-label> "MAIN", FVM_AutoSize()) | instr])
+    
+  dnx-compile-to-flat-ast:
+    (_, _, ast, path, project-path) -> (filename, result)
+    with
+      filename := <guarantee-extension(|"dnx.aterm")> path
+    ; fname    := <base-filename; remove-extension> path
+    ; result   := <dnx-compile> ast
