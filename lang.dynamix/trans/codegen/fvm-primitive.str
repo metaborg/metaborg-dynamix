@@ -54,6 +54,8 @@ rules // Expressions
   
 rules // Statements
   stmt: instrs -> (<map( (\ instr -> RGR_Stmt(instr) \) )> instrs, None())
+  control: instr -> ([instr], None())
+  
   dnx-primitive-call: ("link", [e1, e2, e3]) -> <stmt> [RGR_Link(e1, e2, e3)]
   dnx-primitive-call: ("set", [e1, e2, e3]) -> <stmt> [RGR_Set(e1, e2, e3)]
   dnx-primitive-call: ("empty", [e1, e2]) -> <stmt> [RGR_Empty(e1, e2)]
@@ -62,5 +64,10 @@ rules // Statements
   dnx-primitive-call: ("mkcur", [e1]) -> <stmt> [RGR_ScopeSetCurrent(e1)]
   dnx-primitive-call: ("print", [e1]) -> <stmt> [RGR_Print(e1)]
   dnx-primitive-call: ("printc", [e1]) -> <stmt> [RGR_PrintChar(e1)]
+  
+  dnx-primitive-call: ("jump", [e1]) -> <control> RGR_Jump(e1)
+  dnx-primitive-call: ("jumpz", [e1, e2, e3]) -> <control> RGR_JumpZ(e1, e2, e3)
+  dnx-primitive-call: ("callCF", [e1, e2]) -> <control> RGR_ContCall(e1, e2)
+  dnx-primitive-call: ("returnCF", [e1]) -> <control> RGR_ContReturn(e1)
  
   dnx-primitive-call: (name, _) -> <debug; fail> ${[Dynamix] Missing primitive implementation for '{name}'}
