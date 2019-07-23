@@ -9,6 +9,7 @@ imports
   signatures/Dynamix-sig
 
   pp
+  external
   codegen/dnx-common
   
 rules // Analysis
@@ -85,15 +86,15 @@ rules
       // TypeOf var == ExpT
       
       
-  store-dnx-main(|name): [] -> [] with <debug(!"[Dynamix] ")> $[No module with name '[name]']
+  store-dnx-main(|name): [] -> [] with dnx-log(|"WARN", $[No module with name '[name]'])
   store-dnx-main(|name): e -> e
   
   store-term(|fname): term -> out
     where
-      <debug(!"[Dynamix] ")> $<Writing to file '<fname>'>;
+      dnx-log(|"INFO", $<Writing to file '<fname>'>);
       out := <write-string-to-file> (fname, <write-to-string> <strip-annos> term)
       
-  store-term(|fname): term -> term where <debug(!"[Dynamix] ")> $<Failed to write to file <fname>>
+  store-term(|fname): term -> term where dnx-log(|"ERROR", $<Failed to write to file <fname>>)
 
   write-string-to-file =
     ?(filename, string);

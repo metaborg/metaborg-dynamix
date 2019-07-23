@@ -29,7 +29,7 @@ rules
       bound_body := <dnx-compile-get-out(|defname, args)> match;
       out := <dnx-compile-body> bound_body
       
-    // Primitive
+  // Primitive
   dnx-call(|primname, param): args -> out
     where
       [] := param
