@@ -7,14 +7,11 @@ imports
 
   analysis/static-semantics
   signatures/Dynamix-sig
-
-  pp
-  external
   codegen/dnx-common
   
 rules // Analysis
   desugar = collect-def-types; collect-prim-names; remove-prim-calls; desugar-call-params-all
-  editor-analyze = nabl2-analyze(desugar); store-dnx-spec 
+  editor-analyze = nabl2-analyze(desugar)
 
 rules // Debugging
   // Prints the abstract syntax ATerm of a selection.
@@ -56,66 +53,3 @@ rules
       prim_names := <collect-all((\DNX_CallPrim(name, param, args) -> name\))>
       
   remove-prim-calls = topdown(try((\DNX_CallPrim(name, param, args) -> DNX_Call(name, param, args)\)))
-      
-      
-rules
-  store-dnx-spec: a@AnalysisResult(files) -> a
-    with
-      dnx_main_name := "dynamic-semantics";
-      main := <filter(get-main-ast(|dnx_main_name))> <collect-all(?Full(_,_,_,_,_))> files;
-      <store-dnx-main(|dnx_main_name)> main
-      
-  store-dnx-main(|name): [Module(_,_,_, Defs(types), Defs(defs), candl)] -> e 
-    with
-      // TODO: Import all the imports recursively
-      all_types := types;
-      all_defs := defs;
-      
-      // TODO: Check if this path works on Windows
-      grouped_defs := <map(make-normDef(|all_defs))> all_types;
-      e := <store-term(|"src-gen/dynamix/spec.aterm")> NormModule(None(), candl, <resolve-binds-all> grouped_defs)
-      
-  resolve-binds-all = id
-//  resolve-binds-all: term -> <topdown(try(resolve-binds))> term
-//  resolve-binds: bind@Bind(var, val) -> Bind(ExpVar(var), val)
-//    where
-//      <debug> bind;
-//      a := <debug> <nabl2-get-ast-analysis> var;
-//      occ := <debug> <nabl2-mk-occurrence(|"Var")> var;
-//      type := <debug><nabl2-get-type(|a)> occ
-      // TypeOf var == ExpT
-      
-      
-  store-dnx-main(|name): [] -> [] with dnx-log(|"WARN", $[No module with name '[name]'])
-  store-dnx-main(|name): e -> e
-  
-  store-term(|fname): term -> out
-    where
-      dnx-log(|"INFO", $<Writing to file '<fname>'>);
-      out := <write-string-to-file> (fname, <write-to-string> <strip-annos> term)
-      
-  store-term(|fname): term -> term where dnx-log(|"ERROR", $<Failed to write to file <fname>>)
-
-  write-string-to-file =
-    ?(filename, string);
-    if <dirname; readdir> filename then
-      with(
-        handle := <fopen> (filename, "w");
-        <fputs> (string, handle);
-        <fclose> handle
-      )
-    end   
-  
-  get-main-ast(|main): Full(ast@Module(mname, _, _, _, _, _), _,_,_,_) -> ast
-    where
-      <equal> (main, <strip-annos> mname)
-  
-  make-normDef(|defs): type@TypeDef(name, _, _, _) -> NormDef(<strip-annos> name, type, def_cases)
-    where
-      cname := <strip-annos> name;
-      def_cases := <filter(
-      					(\ Def(dname, param, args, Block(body)) -> DefCase(args, param, body) 
-      					     where <equal> (<strip-annos> dname, cname)
-      					 \))> defs;
-      <geq> (<length> def_cases, 1)
-  

@@ -11,12 +11,13 @@ imports
 rules
   dnx-compile: source_ast -> out
     with
-      NormModule(header, imports, defs) := <import-term(src-gen/dynamix/spec.aterm)>;
+      NormModule(header, imports, defs) := <import-term(target/metaborg/dynamix.spec)>;
       <map(dnx-store-def)> defs;
       (instr, None()) := <dnx-call(|"eval", [])> [source_ast];
       compiled_header := <dnx-primitive-mk-header> imports;
       out := (compiled_header, instr)
-          
+
+rules          
   dnx-store-def =
     ?NormDef(name, type, defs)
     ; rules( dnx-get-defs-by-name: name -> defs )

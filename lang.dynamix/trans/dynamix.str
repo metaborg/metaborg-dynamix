@@ -7,6 +7,7 @@ imports
   outline
   analysis
   dynamix/compile
+  onsave/onsave
 
 rules // Debugging
     

@@ -8,13 +8,15 @@ After this you can import the relevant Dynamix projects using `File -> Import ->
 - `dynamix.test`: Project containing tests. This project is currently empty
 
 ## Using Dynamix in a host language
-In order to create a Dynamix specification for your language you have to host Dynamix in your project. 
+In order to create a Dynamix specification for your language you have to host Dynamix in your project.
 This is done by adding a dependency on Dynamix and importing the relevant Dynamix source files.
 Note that in order to import Dynamix, you also have to import the FrameVM.
 
 Importing Dynamix can be done by adding the following imports to your projects `metaborg.yaml`-file:
 ```yaml
 dependencies:
+  compile:
+  - org.metaborg:lang.dynamix:0.1.0-SNAPSHOT
   source:
   - org.metaborg:lang.dynamix:0.1.0-SNAPSHOT
   - org.metaborg.lang:framevm:1.1.0
@@ -44,7 +46,7 @@ For this you have to take the following steps:
 - Add `dynamix/compile` as an import to your projects `Main.esv`-file
 - Add `dynamix/compile` as an import to your `trans/<LANGUAGE>.str`-file
 
-After taking all the configuration steps, you are able to write a Dynamix specification for your language. 
+After taking all the configuration steps, you are able to write a Dynamix specification for your language.
 Make sure that the module name of your main Dynamix file is `dynamic-semantics` and that the following message is printed to the console:
 ```
 | INFO  | Dynamix                        - Writing to file 'target/dynamix.spec'

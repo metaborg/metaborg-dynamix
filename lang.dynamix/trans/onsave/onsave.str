@@ -1,0 +1,50 @@
+module onsave
+
+imports  
+  signatures/Dynamix-sig
+  
+  nabl2/runtime/analysis/constraint-compat
+  nabl2/api
+  nabl2/runtime
+  
+  codegen/dnx-common
+  external
+
+rules
+  dnx-on-save:
+    (_, _, ast@Module(name, _, _, _, _, _), path, project-path) -> (filename, result)
+    with
+      filename := $[[project-path]/target/metaborg/dynamix/[name].dnxc]
+    ; result   := <compile-dnx-spec> ast
+    ; dnx-log(|"INFO", $<Writing compiled Dynamix spec to '<filename>'>)
+    
+rules      
+  compile-dnx-spec: Module(_,_,_, Defs(types), Defs(defs), candl) -> out 
+    with
+      // TODO: Import all the imports recursively
+      all_types := types;
+      all_defs := defs;
+      
+      // TODO: Check if this path works on Windows
+      grouped_defs := <map(make-normDef(|all_defs))> all_types;
+      out := NormModule(None(), candl, <resolve-binds-all> grouped_defs)
+      
+  resolve-binds-all = id
+//  resolve-binds-all: term -> <topdown(try(resolve-binds))> term
+//  resolve-binds: bind@DNX_Bind(var, val) -> DNX_BindExp(var, val)
+//    where
+//      a    := <nabl2-get-ast-analysis> var;
+//      occ  := <nabl2-mk-occurrence(|"Var")> var;
+//      type := <nabl2-get-type(|a)> occ;
+//      
+//      <equal> ("ExpT", <get-constructor> type)
+  
+  make-normDef(|defs): type@TypeDef(name, _, _, _) -> NormDef(<strip-annos> name, type, def_cases)
+    where
+      cname := <strip-annos> name;
+      def_cases := <filter(
+      					(\ Def(dname, param, args, Block(body)) -> DefCase(args, param, body) 
+      					     where <equal> (<strip-annos> dname, cname)
+      					 \))> defs;
+      <geq> (<length> def_cases, 1)
+  

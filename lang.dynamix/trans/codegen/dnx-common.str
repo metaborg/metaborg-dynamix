@@ -10,5 +10,5 @@ signature
     NormModule: Header * [STRING] * [NormDef] -> S
     NormDef: STRING * TypeDef * [DefCase] -> S
     DefCase: [Pattern] * [STRING] * [instruction] -> S
-    BindExp: [STRING] * [Exp] -> S
+    DNX_BindExp: [STRING] * [Exp] -> S
     MatchError: STRING -> S
