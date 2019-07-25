@@ -47,7 +47,8 @@ rules
       
   dnx-compile-exp(|p): var@RGR_AutoVar(_) -> ([], var)
   
-  dnx-compile-exp(|p): DNX_Term(term) -> <debug(!"out: ")> <dnx-compile-term> <debug(!"in: ")>term
+//  dnx-compile-exp(|p): DNX_Term(term) -> <debug(!"out: ")> <dnx-compile-term> <debug(!"in: ")>term
+  dnx-compile-exp(|p): DNX_Term(term) -> <dnx-compile-term> term
   
   dnx-compile-exp(|p): DNX_Cont(name) -> <dnx-primitive-cont-label> name
   dnx-compile-exp(|p): DNX_Link(name) -> <dnx-primitive-link-label> name
