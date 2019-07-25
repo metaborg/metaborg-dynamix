@@ -43,6 +43,7 @@ rules
       binds := <dnx-match-list-tail> (arg, <concat> [elems, [tail]])
       
   dnx-match-arg: (arg, e) -> <fail> // No match found
+//  dnx-match-arg: (arg, e) -> <debug(!"Fail: "); fail> (arg, e)
   
   dnx-match-list-tail: (list, [pattern]) -> <dnx-match-arg> (list, pattern)
   dnx-match-list-tail: ([ah | at], [ph | pt]) -> 

@@ -8,9 +8,6 @@ language
   line comment  : "//"
   block comment : "/*" * "*/"
   fences        : [ ] ( ) { }
-
-language
-  on save : dnx-on-save
   
 menus
   
@@ -20,9 +17,6 @@ menus
     action: "Show parsed AST"    = debug-show-aterm           (source)
     action: "Show desugared AST" = debug-show-desugared-aterm (source)
     action: "Show analyzed AST"  = debug-show-analyzed-aterm
-  
-  menu: "Compile" (openeditor)
-    action: "On save"            = dnx-on-save
 
 views
   

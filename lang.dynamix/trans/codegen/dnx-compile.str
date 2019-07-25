@@ -9,17 +9,20 @@ imports
   codegen/dnx-instruction
     
 rules
-  dnx-compile: source_ast -> out
+  dnx-compile: (source_ast, Some(dnx-module)) -> out
     with
-      NormModule(header, imports, defs) := <import-term(target/metaborg/dynamix.spec)>;
+      NormModule(name, candl, defs) := dnx-module;
       <map(dnx-store-def)> defs;
+      // TODO this could result in a match failure, we should handle this case
       (instr, None()) := <dnx-call(|"eval", [])> [source_ast];
-      compiled_header := <dnx-primitive-mk-header> imports;
+      compiled_header := <dnx-primitive-mk-header> candl;
       out := (compiled_header, instr)
+      
+  dnx-compile: _ -> <debug(!"[Dynamix] "); fail> "No Dynamix specification loaded! Compiling failed"
 
 rules          
   dnx-store-def =
-    ?NormDef(name, type, defs)
+    ?DefGroup(name, defs)
     ; rules( dnx-get-defs-by-name: name -> defs )
     
   dnx-call(|defname, param): args -> out

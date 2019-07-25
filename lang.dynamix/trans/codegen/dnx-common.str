@@ -7,8 +7,8 @@ signature
   sorts S
   constructors    
     Module : STRING * [Import] * [STRING] * [Def] * [Def]  * [STRING] -> S
-    NormModule: Header * [STRING] * [NormDef] -> S
-    NormDef: STRING * TypeDef * [DefCase] -> S
+    NormModule: [STRING] * [STRING] * [NormDef] -> S
+    DefGroup: STRING * [DefCase] -> S
     DefCase: [Pattern] * [STRING] * [instruction] -> S
     DNX_BindExp: [STRING] * [Exp] -> S
     MatchError: STRING -> S

@@ -1,0 +1,87 @@
+module dnx-loader
+
+imports
+  signatures/Dynamix-sig
+  codegen/dnx-common
+  libspoofax/core/language
+  
+    
+rules
+  dnx-load-compiled-spec: _ -> Some(term)
+    where
+      main_module_name := "dynamic-semantics";
+      modules := <dnx-load-compiled-modules>;
+      <geq> (<length> modules, 0);
+      <lookup'> (main_module_name, modules)
+    with
+      (_, candl, defs) := <load-module-recursively(|[])> main_module_name;
+      term := NormModule(main_module_name, <dnx-group-candl> candl, <dnx-group-defs> defs) 
+     
+  dnx-load-compiled-spec: _ -> None()
+    where
+     <debug(!"[Dynamix] ")> "Module 'dynamic-semantics' not found"
+     
+  dnx-load-compiled-modules: _ -> filepaths
+    with
+      [(_, _, _, lang_root) | _] := <language-components>;
+      path := $[[lang_root]/src-gen/dynamix/];
+      filepaths := <readdir; filter(string-ends-with(|".dnxc")); map( (\fname -> (<remove-extension> fname, $[[path][fname]]) \) )> path;
+      <map(load-module-from-file; store-module)> filepaths
+      
+  load-module-from-file: (fname, filepath) -> (fname, mod)
+    where
+      mod := <ReadFromFile> filepath
+      
+  load-module-recursively(|map): name -> (newer_map, merged_candl, merged_defs)
+    where
+      <not(in-map(|map))> name
+    with
+      (imports, candl, defs) := <dnx-get-module-by-name> name;
+      map2 := [name | map];
+      to_import := <filter(not(in-map(|map)))> imports;
+      
+      (newer_map, new_candl, new_defs) := <foldl(load-module-fold)> (to_import, (map2, [], []));
+      merged_candl := <concat> [candl, new_candl];
+      merged_defs := <concat> [defs, new_defs]
+      
+  load-module-recursively(|map): name -> (map, [], [])
+  
+  in-map(|map): key -> key where <elem> (key, map) 
+  
+  load-module-fold: (name, (map, candl, defs)) -> (map2, <concat> [new_candl, candl], <concat> [new_defs, defs])
+    with
+      (map2, new_candl, new_defs) := <load-module-recursively(|map)> name
+
+  store-module: (name, NormModule(imports, candl, defs)) -> name
+    where
+      rules( dnx-get-module-by-name: name -> (imports, candl, defs) )
+      
+      
+  dnx-group-candl: defs -> out
+    where
+      (_, out) := <foldl(dnx-group-candl-fold)> (defs, ([], []))
+      
+  dnx-group-candl-fold: (deff, (map, candl)) -> ([name|map], [deff|candl])
+    where
+      name := <get-candl-name> deff;
+      <not(elem)> (name, map)
+  dnx-group-candl-fold: (_, (map, candl)) -> (map, candl)
+  
+  get-candl-name: DNX_Link(name) -> <strip-annos> name
+  get-candl-name: DNX_Cont(name) -> <strip-annos> name
+  
+  dnx-group-defs: defs -> out
+    where
+      out := <foldl(dnx-group-defs-fold); map( (\ (_, val) -> val \) )> (defs, [])
+  
+  dnx-group-defs-fold: (DefGroup(name, cases), map) -> new_map
+    where
+      DefGroup(_, other_cases) := <lookup'> (name, map)
+    with
+      new_map := <map-update> (map, name, DefGroup(name, <concat> [cases, other_cases]))
+      
+  dnx-group-defs-fold: (DefGroup(name, cases), map) -> [(name, DefGroup(name, cases))| map]
+  
+  map-update: ([(name, val) | tail], name, new_val) -> [(name, new_val) | tail]
+  map-update: ([e | tail], name, new_val) -> [e | <map-update> (tail, name, new_val)]
+      
