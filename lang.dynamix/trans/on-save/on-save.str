@@ -20,11 +20,12 @@ rules
     ; dnx-log(|"INFO", $<Writing compiled Dynamix spec to '<filename>'>)
     
 rules      
-  compile-dnx-spec: Module(_,_,_, Defs(types), Defs(defs), candl) -> out 
+  compile-dnx-spec: Module(_,imports,_, Defs(types), Defs(defs), candl) -> out 
     with
       // TODO: Check if this path works on Windows
       grouped_defs := <map(make-normDef(|defs))> types;
-      out := <strip-annos> NormModule([], candl, <resolve-binds-all> grouped_defs)
+      imports' := <mapconcat(compile-imports)> imports;
+      out := <strip-annos> NormModule(imports', candl, <resolve-binds-all> grouped_defs)
       
   resolve-binds-all: term -> <topdown(try(resolve-binds))> term
   resolve-binds: bind@DNX_Bind(var, val) -> DNX_BindExp(var, val)
@@ -42,4 +43,8 @@ rules
       					     where <equal> (<strip-annos> dname, cname)
       					 \))> defs;
       <geq> (<length> def_cases, 1)
+      
+   compile-imports: Imports(imports) -> <map(compile-imports)> imports
+   compile-imports: Import(fname) -> fname
+   
   

@@ -42,12 +42,14 @@ rules
   
   collect-def-types: Module(name, imports, defs) -> Module(name, imports, [], Defs(type_decls), Defs(def_decls), candl)
     where
-      candl := [DNX_Link("P"), DNX_Link("I"), DNX_Cont("ret"), DNX_Cont("exc"), DNX_Cont("next")];
+      candl := <concat> [<get-standard-candl> name, []];
       all_defs := <mapconcat((\ Defs(d) -> d \))> defs;
       def_decls  := <filter(?Def(_, _, _, _))> all_defs;
       type_decls := <filter(?TypeDef(_, _, _, _))> all_defs
       
-      
+  get-standard-candl: "dynamic-semantics" -> [DNX_Link("P"), DNX_Link("I"), DNX_Cont("ret"), DNX_Cont("exc"), DNX_Cont("next")]
+  get-standard-candl: _ -> []
+  
   collect-prim-names: Module(name, imports, _, types, defs, candl) -> Module(name, imports, prim_names, types, defs, candl)
     where
       prim_names := <collect-all((\DNX_CallPrim(name, param, args) -> name\))>

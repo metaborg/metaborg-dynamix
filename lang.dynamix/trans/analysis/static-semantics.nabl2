@@ -13,13 +13,13 @@ rules
   [[Module(name, imports, prim_names, Defs(types), Defs(defs), candl) ^(s)]] :=
     new module, module ---> s,
     Module{name} <- s,
-    Module{name} -> module, 
+    Module{name} ===> module, 
     Module{name}.defs := defs,
     distinct/name D(s)/Module | error $[Multiple modules with name [name]] @NAMES,
     
     Map1(import) [[imports ^(module)]],
-    initTypes[[ name ^(module)]],
-    Map1(initLabels) [[ candl ^(module)]],
+    initTypes[[ name ^(s)]],
+    Map1(initLabels) [[ candl ^(s)]],
     Map1(defNames) [[prim_names ^(module)]],
     Map1(typeDecl) [[types ^(module)]],
     new defs_s, defs_s ---> module,
@@ -31,7 +31,9 @@ rules
     Map1(import) [[imports ^(s) ]].
     
   import [[Import(name) ^(s)]] :=
-    false | warning $[Imports are not yet supported].
+    Module{name} -> s,
+    Module{name} |-> d | error $[Cannot resolve module '[name]'] @name,
+    Module{name} <=== s.
 
   typeDecl [[TypeDef(name, paramType, args, ret) ^(s) ]] :=
     Def{name} <- s,
