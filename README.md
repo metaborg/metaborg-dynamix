@@ -49,7 +49,7 @@ For this you have to take the following steps:
 After taking all the configuration steps, you are able to write a Dynamix specification for your language.
 Make sure that the module name of your main Dynamix file is `dynamic-semantics` and that the following message is printed to the console:
 ```
-| INFO  | Dynamix                        - Writing to file 'target/dynamix.spec'
+| INFO  | Dynamix                        - Writing compiled Dynamix spec to 'src-gen/dynamix/<modulename>.dnxc'
 ```
 
 Finally you can compile your languages source files to FrameVM bytecode by clicking `Spoofax -> Dynamix -> Compile to FVM`.
