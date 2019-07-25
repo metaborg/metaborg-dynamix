@@ -6,16 +6,26 @@ imports
   signatures/Dynamix-sig
 
 rules
+  fvm-convert-path: DNX_Path([]) -> FVM_Self()
+  fvm-convert-path: DNX_Path(path) -> FVM_Path(<map(to-fvm-path)> path)
+  
+  to-fvm-path: label -> FVM_Link(label)                where <is-string> label
+  to-fvm-path: slot  -> FVM_Slot(<int-to-string> slot) where <is-int>    slot
+  
+rules
   dnx-primitive-cont-label: name -> FVM_Cont(name)
+  dnx-primitive-link-label: name -> FVM_Link(name)
   dnx-primitive-assign: (var, val) -> ([RGR_Assign(var, val)], None())
   dnx-primitive-int-constant: n -> RGR_IntVal(n)
   dnx-primitive-mk-label: name -> FVM_Label(name)
   dnx-primitive-mk-header: items -> FVM_Header(<map(dnx-primitive-mk-header-item)> items)
     with
-      <set-counter> ("link", 0);
-      <set-counter> ("cont", 0)
+      <set-counter> ("link", -1);
+      <set-counter> ("cont", 1)	// Already 2 continuations pre-allocated
       
   dnx-primitive-mk-header-item: DNX_Link(label) -> FVM_LinkAlias(FVM_Link(label), <int-to-string> <next-counter> "link")
+  dnx-primitive-mk-header-item: DNX_Cont(name@"ret")  -> FVM_ContAlias(FVM_Cont(name), "0")
+  dnx-primitive-mk-header-item: DNX_Cont(name@"exc")  -> FVM_ContAlias(FVM_Cont(name), "1")
   dnx-primitive-mk-header-item: DNX_Cont(name)  -> FVM_ContAlias(FVM_Cont(name), <int-to-string> <next-counter> "cont")
 
 
@@ -48,7 +58,7 @@ rules // Expressions
   
   dnx-primitive-call: ("new",  [e1]) -> ([], RGR_New(e1))
   dnx-primitive-call: ("size", [e1]) -> ([], RGR_FSize(e1))
-  dnx-primitive-call: ("get",  [e1, e2]) -> ([], RGR_Get(e1, e2))
+  dnx-primitive-call: ("get",  [e1, e2]) -> ([], RGR_Get(e1, <fvm-convert-path> e2))
   dnx-primitive-call: ("is-empty", [e1, e2]) -> ([], RGR_IsEmpty(e1, e2))
   dnx-primitive-call: ("cur", []) -> ([], RGR_ScopeGetCurrent())
   
@@ -56,8 +66,8 @@ rules // Statements
   stmt: instrs -> (<map( (\ instr -> RGR_Stmt(instr) \) )> instrs, None())
   control: instr -> ([instr], None())
   
-  dnx-primitive-call: ("link", [e1, e2, e3]) -> <stmt> [RGR_Link(e1, e2, e3)]
-  dnx-primitive-call: ("set", [e1, e2, e3]) -> <stmt> [RGR_Set(e1, e2, e3)]
+  dnx-primitive-call: ("link", [e1, e2, e3]) -> <stmt> [RGR_Link(e1, <try(fvm-convert-path)> e2, e3)]
+  dnx-primitive-call: ("set", [e1, e2, e3]) -> <stmt> [RGR_Set(e1, <fvm-convert-path> e2, e3)]
   dnx-primitive-call: ("empty", [e1, e2]) -> <stmt> [RGR_Empty(e1, e2)]
   dnx-primitive-call: ("push", [e1, e2]) -> <stmt> [RGR_ContTransfer([e1], e2)]
   dnx-primitive-call: ("setCF", [e1, e2, e3]) -> <stmt> [RGR_ContSet(e1, e2, e3)]
@@ -70,4 +80,3 @@ rules // Statements
   dnx-primitive-call: ("callCF", [e1, e2]) -> <control> RGR_ContCall(e1, e2)
   dnx-primitive-call: ("returnCF", [e1]) -> <control> RGR_ContReturn(e1)
  
-  dnx-primitive-call: (name, _) -> <debug; fail> ${[Dynamix] Missing primitive implementation for '{name}'}

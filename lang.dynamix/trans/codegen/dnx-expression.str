@@ -50,7 +50,9 @@ rules
   dnx-compile-exp(|p): DNX_Term(term) -> <debug(!"out: ")> <dnx-compile-term> <debug(!"in: ")>term
   
   dnx-compile-exp(|p): DNX_Cont(name) -> <dnx-primitive-cont-label> name
+  dnx-compile-exp(|p): DNX_Link(name) -> <dnx-primitive-link-label> name
   
+  dnx-compile-exp(|p): path@DNX_Path(_) -> path
   
   // Just let the non-Dynamix arguments fall through
   // These are terms most often

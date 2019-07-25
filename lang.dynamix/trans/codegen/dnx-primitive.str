@@ -1,0 +1,45 @@
+module dnx-primitive
+
+imports
+  nabl2/api
+  signatures/Dynamix-sig
+  
+  codegen/dnx-common
+
+  
+rules
+   dnx-primitive-call: ("resolve", [name]) -> ([], <dnx-resolve-name(|"Var")> name)	// TODO: Correct ordering of slots in scopes (First referenced gets first slot maybe?)
+   
+rules
+  dnx-resolve-name(|namespace): name -> DNX_Path(path)
+      with
+        a       := <nabl2-get-ast-analysis> name;
+        ref-occ := <nabl2-mk-occurrence(|namespace)> name;
+        path    := <dnx-resolve-name-path(|namespace, name,  a)> ref-occ
+        
+    dnx-resolve-name-path(|namespace, name, a): ref-occ -> fvm_path 
+      where
+        (dec-occ, path) := <nabl2-get-resolved-name(|a)> ref-occ
+      with
+        (path_body, path_end) := <split-init-last> path;
+        fvm_path     := <concat>[<map(dnx-from-nabl2-path)> path_body, [<dnx-resolve-name-slot(|namespace, name, a)> dec-occ]]
+    
+    dnx-resolve-name-path(|namespace, name, a): ref-occ -> fvm_path 
+      where
+        fvm_path := [<dnx-resolve-name-slot(|namespace, name, a)> ref-occ]
+        
+    dnx-resolve-name-slot(|namespace, name, a): occ -> idx
+      with 
+        TermIndex(termfile, termidx) := <nabl2-get-occurrence-index> occ;
+        scope := <nabl2-get-decl-scope(|a)> occ;
+        occs := <nabl2-get-scope-decls(|a); filter(dnx-is-valid-occurrence(|["Var"]))> scope;
+		idx := <find-index(dnx-is-occurrence-match(|namespace, name))> occs
+    
+    dnx-is-valid-occurrence(|namespaces): occ@Occurrence(Namespace(ns), _, _) -> occ
+      where
+        <elem> (ns, namespaces)
+        
+    dnx-is-occurrence-match(|req-ns, req-name): occ@Occurrence(Namespace(req-ns), name, _) -> occ where <equal> (<strip-annos> req-name, <strip-annos> name)
+    
+    dnx-from-nabl2-path: E(scope, lbl) -> <get-constructor> lbl
+    

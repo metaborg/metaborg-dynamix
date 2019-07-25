@@ -37,9 +37,9 @@ rules
       
   dnx-compile-instr(|b, p): ([DNX_Bind(var, val) | t], instrs, None() ) -> out
     where
-      (_, r_exp) := <dnx-compile-exp(|b, p)> val;
+      (_, res) := <dnx-compile-exp(|b, p)> val;
       var_name := <newname> var;
-      newbind := (var, r_exp);
+      newbind := (var, res);
       out := <dnx-compile-instr(|[newbind|b], p)> (t, instrs, None())
   
   dnx-compile-instr(|b, p): ([e | _], _, _) -> <fail> where <debug(!"undefined instr: ")> e

@@ -62,12 +62,15 @@ context-free syntax
  Exp.DNX_Call = <<DEFNAME><DefParam?>(<{Exp ","}*>)>
  Exp.DNX_CallPrim = <<PRIMNAME><DefParam?>(<{Exp ","}*>)> {prefer}
  Exp.DNX_Var = <<ID>>
- Exp.DNX_Path = <[<{Exp ","}*>]>
+ Exp.DNX_Path = <[<{PathElem ","}*>]>
  
  Exp.DNX_Quote = [<[Block]>]
  Exp.DNX_Splice = <~<Exp>>
- Exp.DNX_Link = <&<LINKNAME>>
+ Exp = Link
+ Link.DNX_Link = <&<LINKNAME>>
  Exp.DNX_Cont = <$<CONTNAME>>
  
+ PathElem = Link
+ PathElem.DNX_Slot = INTLEZ
  Exp.DNX_Term = Pattern {avoid}
  

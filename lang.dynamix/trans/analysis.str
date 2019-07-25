@@ -10,7 +10,7 @@ imports
   codegen/dnx-common
   
 rules // Analysis
-  desugar = collect-def-types; collect-prim-names; remove-prim-calls; desugar-call-params-all
+  desugar = collect-def-types; collect-prim-names; remove-prim-calls; desugar-call-params-all; desugar-paths-all
   editor-analyze = nabl2-analyze(desugar)
 
 rules // Debugging
@@ -53,3 +53,9 @@ rules
       prim_names := <collect-all((\DNX_CallPrim(name, param, args) -> name\))>
       
   remove-prim-calls = topdown(try((\DNX_CallPrim(name, param, args) -> DNX_Call(name, param, args)\)))
+  
+  desugar-paths-all = topdown(try(desugar-path))
+  
+  desugar-path: DNX_Path(path) -> DNX_Path(<map(deconstruct-path-elem)> path)
+  deconstruct-path-elem: DNX_Link(lbl) -> lbl
+  deconstruct-path-elem: DNX_Slot(slot) -> <string-to-int> slot

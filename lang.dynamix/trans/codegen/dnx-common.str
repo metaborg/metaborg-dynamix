@@ -12,3 +12,22 @@ signature
     DefCase: [Pattern] * [STRING] * [instruction] -> S
     DNX_BindExp: [STRING] * [Exp] -> S
     MatchError: STRING -> S
+
+     
+rules
+    new-static: (name, val) -> val
+      with
+        <set-counter> (name, val)
+        
+    get-static: name -> val 
+      where
+        val := <get-counter> name;
+        <set-counter> (name, val)
+        
+    update-static: (name, val) -> val 
+      where
+        <set-counter> (name, val)
+        
+    find-index(s): [] -> <fail> 
+    find-index(s): [name|_] -> 0 where <s> name
+    find-index(s): [h|t] -> <find-index(s); inc> t
