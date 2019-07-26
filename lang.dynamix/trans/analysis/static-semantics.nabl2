@@ -35,6 +35,16 @@ rules
     Module{name} |-> d | error $[Cannot resolve module '[name]'] @name,
     Module{name} <=== s.
 
+  typeDecl [[TypeDef(name@"eval", paramType, args, ret) ^(s) ]] :=
+    Def{name} <- s,
+    type [[ret ^(s) : retty]],
+    Map1T(type) [[args ^(s) : argty]],
+    Map1T(paramTypeDecl) [[paramType ^(s) : paramty]],
+    
+    Def{name}:DefT(paramty, argty, retty) | error $[Invalid type for rule eval, should be 'ast -> instr'] @name,
+    Def{name}:DefT([], [TermT()], InstrT()),
+    distinct/name D(s)/Def | error $[Multiple type signatures for rule [name]] @NAMES.
+    
   typeDecl [[TypeDef(name, paramType, args, ret) ^(s) ]] :=
     Def{name} <- s,
     type [[ret ^(s) : retty]],
