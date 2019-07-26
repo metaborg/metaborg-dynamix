@@ -7,6 +7,8 @@ imports
 colorer
   green_italic = 0 80 0 italic
   
+  string       = 0 130 20
+  constructor  = 0 70 70
   rulename     = 15 30 140 bold
   primitive    = 200 80 0 bold
   type         = 0 80 0 bold italic
@@ -16,6 +18,8 @@ colorer
   
   layout     : green_italic
   
+  CONSTRUCTOR: constructor
   DEFNAME:     rulename
   PRIMNAME:    primitive
   Type._:      type
+  STRING:      string
