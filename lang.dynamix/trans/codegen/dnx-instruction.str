@@ -9,7 +9,7 @@ imports
   codegen/dnx-expression
   
 rules
-  dnx-compile-body: MatchError(error) -> MatchError(error)
+  dnx-compile-body: MatchError(error) -> ([], MatchError(error))
   dnx-compile-body: (binds, param_binds, body) -> out
     with
       out := <dnx-compile-instr(|binds, param_binds)> (body, [], None())

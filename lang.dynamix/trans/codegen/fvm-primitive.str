@@ -4,6 +4,8 @@ imports
   signatures/fvm-roger-sig
   signatures/fvm-common-sig
   signatures/Dynamix-sig
+  
+  fvm-common
 
 rules
   fvm-convert-path: DNX_Path([]) -> FVM_Self()
@@ -13,6 +15,7 @@ rules
   to-fvm-path: slot  -> FVM_Slot(<int-to-string> slot) where <is-int>    slot
   
 rules
+  dnx-primitive-is-var: e@RGR_AutoVar(_) -> e
   dnx-primitive-cont-label: name -> FVM_Cont(name)
   dnx-primitive-link-label: name -> FVM_Link(name)
   dnx-primitive-assign: (var, val) -> ([RGR_Assign(var, val)], None())

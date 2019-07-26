@@ -16,9 +16,14 @@ rules // Debugging
       filename := <guarantee-extension(|"dnx.rgr")> path
     ; fname    := <base-filename; remove-extension> path
     ; compiled_spec := <dnx-load-compiled-spec>
-    ; (header, instr) := <dnx-compile> (ast, compiled_spec)
-    ; result := <pp-framevm> <rgr-assign-registers> <rgr-from-flat> (header, [(<dnx-primitive-mk-label> "MAIN", FVM_AutoSize()) | instr])
+    ; prog := <dnx-compile> (ast, compiled_spec)
+    ; result := <fvm-pp-flat> <(?( (header, instr) ); !(header, [(<dnx-primitive-mk-label> "MAIN", FVM_AutoSize()) | instr]) ) <+ id>
     
+  fvm-pp-flat: prog@(_, _) -> <pp-framevm> <rgr-assign-registers> <rgr-from-flat> prog
+  fvm-pp-flat: errors -> <map(pp-match-error); concat-strings> errors
+
+  pp-match-error: MatchError(error) -> <concat-strings> [error, "\n"]
+  
   dnx-compile-to-flat-ast:
     (_, _, ast, path, project-path) -> (filename, result)
     with
