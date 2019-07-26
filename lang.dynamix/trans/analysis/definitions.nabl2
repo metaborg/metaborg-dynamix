@@ -179,4 +179,4 @@ rules
     
   defNames[[ name@"length" ^(s)]] :=
     Def{name} <- s,
-    Def{name} : DefT([], TermT(), IntT()) !.
+    Def{name} : DefT([], [TermT()], TermT()) !.

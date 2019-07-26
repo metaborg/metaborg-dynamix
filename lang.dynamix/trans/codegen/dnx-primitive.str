@@ -9,6 +9,9 @@ imports
   
 rules
    dnx-primitive-call: ("resolve", [name]) -> ([], <dnx-resolve-name(|"Var")> name)	// TODO: Correct ordering of slots in scopes (First referenced gets first slot maybe?)
+   dnx-primitive-call: ("length", [list]) -> ([], res) where <is-list> list
+     with
+       res := <length; int-to-string> list
    
 rules
   dnx-resolve-name(|namespace): name -> DNX_Path(path)
