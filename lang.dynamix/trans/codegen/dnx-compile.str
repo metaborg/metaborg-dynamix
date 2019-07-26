@@ -39,10 +39,10 @@ rules
     where
       [] := param
     with
-      out := <dnx-primitive-call <+ (!${[Dynamix] Missing primitive implementation for '{primname}'}; debug; fail)> (primname, args)
+      out := <dnx-primitive-call <+ (!${[Dynamix] Missing primitive implementation for '{<write-to-string> primname}'}; debug; fail)> (primname, args)
         
   dnx-compile-get-out(|defname, ast): Some(a) -> a
   dnx-compile-get-out(|defname, ast): None() -> MatchError(error)
     where
       ast' := ast; 
-      error := <debug(!"[Dynamix] ")> ${Could not match the following arguments with the rule '{defname}': '{<strip-annos> ast}'}
+      error := <debug(!"[Dynamix] ")> ${Could not match the following arguments with the rule '{<write-to-string> defname}': '{<strip-annos; write-to-string> ast}'}
