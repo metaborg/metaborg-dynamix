@@ -22,7 +22,11 @@ rules
       zipped := <zip> (a_args, p_args);
       binds := <mapconcat(dnx-match-arg)> zipped
       
-  dnx-match-arg: (arg, DNXTerm_Var(name)) -> [(name, arg)]
+  dnx-match-arg: (arg, DNXTerm_Var(name)) -> []	// Wildcard
+    where
+      <string-starts-with(|"_"); string-ends-with(|"_")> name
+  dnx-match-arg: (arg, DNXTerm_Var(name)) -> [(name, arg)] // No wildcard
+  
   dnx-match-arg: (arg, DNXTerm_String(string)) -> []
     where
       <is-string> arg;
