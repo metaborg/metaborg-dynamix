@@ -182,7 +182,33 @@ rules
     d:sty,
     ty == sty.
     
-  exp [[DNX_Term(term) ^(q, s, qp) : ty ]] := term [[term ^(s) : ty]].
+  exp [[DNX_Term(term) ^(q, s, qp) : ty ]] := expterm [[term ^(s) : ty]].
   
+  expterm[[DNXTerm_Var(name) ^(s) : ty]] :=
+    Var{name} -> s,
+    Var{name} |-> d | error $[Variable [name] not defined] @name,
+    d:ty!.
+    
+  expterm[[DNXTerm_List(elems) ^(s) : TermT()]] :=
+    exptermMap [[elems ^(s) : TermT()]].
+    
+  expterm[[DNXTerm_ListTail(elems, tail) ^(s) : TermT()]] :=
+    exptermMap [[elems ^(s) : TermT()]],
+    expterm [[tail ^(s) : TermT()]].
+    
+  expterm[[DNXTerm_ListLast(init, last) ^(s) : TermT()]] :=
+    exptermMap [[last ^(s) : TermT()]],
+    expterm [[init ^(s) : TermT()]].
+    
+  expterm[[DNXTerm_Pat(name, args) ^(s) : TermT()]] :=
+    exptermMap [[args ^(s) : TermT()]].
+    
+  expterm[[DNXTerm_Int(_) ^(s) : TermT()]].
+    
+  expterm[[DNXTerm_String(_) ^(s) : TermT()]].
+  
+  exptermMap [[ [] ^(s) : ty ]].
+  exptermMap [[ [h|t] ^(s) : ty ]] :=
+    expterm [[h ^(s) : ty]], exptermMap [[t ^(s) : ty ]].
   
     

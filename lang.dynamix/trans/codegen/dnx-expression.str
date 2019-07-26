@@ -17,6 +17,7 @@ rules
       out := <dnx-compile-exp(|p)> bound_exp
       
   dnx-bind-args(|binds): term -> <topdown(try(dnx-bind-args-(|binds)))> term
+  dnx-bind-args-(|binds): DNXTerm_Var(name) -> <dnx-bind-args-(|binds)> DNX_Var(name)
   dnx-bind-args-(|binds): DNX_Var(name) -> res
     with
       res := <getfirst((\(key, val) -> val where <equal> (name, key)\))> binds
@@ -69,7 +70,8 @@ rules
   dnx-compile-term: DNXTerm_Pat(name, args) -> <mkterm> (name, <map(dnx-compile-term)> args)
   dnx-compile-term: DNXTerm_List(elems) -> <map(dnx-compile-term)> elems
   dnx-compile-term: DNXTerm_ListTail(elems, tail) -> <concat> [<map(dnx-compile-term)> elems, <dnx-compile-term> tail]
-  
+  dnx-compile-term: var@RGR_AutoVar(_) -> var
+  dnx-compile-term: e -> e
   
 
   

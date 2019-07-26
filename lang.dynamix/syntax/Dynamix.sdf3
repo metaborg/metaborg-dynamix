@@ -48,7 +48,7 @@ context-free syntax
  Pattern.DNXTerm_Var = <<ID>>
  Pattern.DNXTerm_Int = INT
  Pattern.DNXTerm_String = STRING
- Pattern.DNXTerm_Pat = <<ID>(<{Pattern ","}*>)>
+ Pattern.DNXTerm_Pat = <<CONSTRUCTOR>(<{Pattern ","}*>)>
  Pattern.DNXTerm_List = <[<{Pattern ","}*>]>
  Pattern.DNXTerm_ListTail = <[<{Pattern ","}+> | <Pattern>]>
  Pattern.DNXTerm_ListLast = <[<Pattern> || <{Pattern ","}+>]>

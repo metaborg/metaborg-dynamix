@@ -45,4 +45,4 @@ rules
   dnx-compile-get-out(|defname, ast): None() -> MatchError(error)
     where
       ast' := ast; 
-      error := <debug(!"[Dynamix] ")> ${Could not match the following arguments with the rule '{<write-to-string> defname}': '{<strip-annos; write-to-string> ast}'}
+      error := <debug(!"[Dynamix] ")> ${Could not match the following arguments with the rule {<write-to-string> defname}: {<strip-annos; write-to-string> ast}}
