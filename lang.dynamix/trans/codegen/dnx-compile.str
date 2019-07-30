@@ -14,10 +14,11 @@ rules
     with
       NormModule(name, candl, defs) := dnx-module;
       <map(dnx-store-def)> defs;
-      // TODO this could result in a match failure, we should handle this case
-      (instr, err) := <dnx-call(|"eval", [])> [source_ast];
+      blocks := <new-hashtable>;
+      (instr, err) := <dnx-call(|"eval", [], <new-hashtable>, blocks)> [source_ast];
       compiled_header := <dnx-primitive-mk-header> candl;
-      out := <dnx-mk-final-output> (compiled_header, instr, err)
+      blocks_instr := <hashtable-getlist; map((\ (label, body) -> [(label, <dnx-primitive-autosize>) | body] \)); concat> blocks; 
+      out := <dnx-mk-final-output> (compiled_header, <conc> (instr, blocks_instr), err)
       
   dnx-mk-final-output: (header, instr, None()) -> out
     where
@@ -34,20 +35,20 @@ rules
     ?DefGroup(name, defs)
     ; rules( dnx-get-defs-by-name: name -> defs )
     
-  dnx-call(|defname, param): args -> out
+  dnx-call(|defname, param, properties, blocks): args -> out
     where
       defs := <dnx-get-defs-by-name> defname
     with
       match := <getfirst(dnx-match-rule(|args, param)) <+ !None()> defs;
       bound_body := <dnx-compile-get-out(|defname, args)> match;
-      out := <dnx-compile-body> bound_body
+      out := <dnx-compile-body(|properties, blocks)> bound_body
       
   // Primitive
-  dnx-call(|primname, param): args -> out
+  dnx-call(|primname, param, properties, blocks): args -> out
     where
       [] := param
     with
-      out := <dnx-primitive-call <+ (!${[Dynamix] Missing primitive implementation for '{<write-to-string> primname}'}; debug; fail)> (primname, args)
+      out := <dnx-primitive-call(|properties) <+ (!${Missing primitive implementation for {<write-to-string> primname}}; debug(!"[Dynamix] "); fail)> (primname, args)
         
   dnx-compile-get-out(|defname, ast): Some(a) -> a
   dnx-compile-get-out(|defname, ast): None() -> MatchError(error)

@@ -40,6 +40,12 @@ rules
     where
       <is-list> arg; <equal> (<length> elems, <length> arg);
       binds :=  <zip; mapconcat(dnx-match-arg)> (arg, elems)
+  
+  dnx-match-arg: (arg, DNXTerm_Tuple(elems)) -> binds
+    where
+      <is-tuple> arg; tuple := <TupleToList> arg;
+      <equal> (<length> elems, <length> tuple);
+      binds :=  <zip; mapconcat(dnx-match-arg)> (tuple, elems)
      
   dnx-match-arg: (arg, DNXTerm_ListTail(elems, tail)) -> binds
     where

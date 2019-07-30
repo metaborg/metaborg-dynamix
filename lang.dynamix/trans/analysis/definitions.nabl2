@@ -8,7 +8,7 @@ rules
 
   defNames[[ name@"empty" ^(s)]] :=
     Def{name} <- s,
-    Def{name} : DefT([], [PathT(), ExpT()], InstrT()) !.
+    Def{name} : DefT([], [TermT(), ExpT()], InstrT()) !.
 
   defNames[[ name@"push" ^(s)]] :=
     Def{name} <- s,
@@ -56,11 +56,11 @@ rules
 
   defNames[[ name@"getCF" ^(s)]] :=
     Def{name} <- s,
-    Def{name} : DefT([], [ExpT(), ContT()], ExpT()) !.
+    Def{name} : DefT([], [ExpT(), TermT()], ExpT()) !.
 
   defNames[[ name@"setCF" ^(s)]] :=
     Def{name} <- s,
-    Def{name} : DefT([], [ExpT(), ContT(), ExpT()], InstrT()) !.
+    Def{name} : DefT([], [ExpT(), TermT(), ExpT()], InstrT()) !.
 
   defNames[[ name@"unpackCF" ^(s)]] :=
     Def{name} <- s,
@@ -151,11 +151,11 @@ rules
 
   defNames[[ name@"link" ^(s)]] :=
     Def{name} <- s,
-    Def{name} : DefT([], [ExpT(), PathOrExpT(), LinkT()], InstrT()) !.
+    Def{name} : DefT([], [ExpT(), TermOrExpT(), TermT()], InstrT()) !.
 
   defNames[[ name@"set" ^(s)]] :=
     Def{name} <- s,
-    Def{name} : DefT([], [ExpT(), PathOrExpT(), ExpT()], InstrT()) !.
+    Def{name} : DefT([], [ExpT(), TermOrExpT(), ExpT()], InstrT()) !.
 
   defNames[[ name@"mkcur" ^(s)]] :=
     Def{name} <- s,
@@ -167,16 +167,38 @@ rules
 
   defNames[[ name@"get" ^(s)]] :=
     Def{name} <- s,
-    Def{name} : DefT([], [ExpT(), PathOrExpT()], ExpT()) !.
+    Def{name} : DefT([], [ExpT(), TermOrExpT()], ExpT()) !.
 
   defNames[[ name@"is-empty" ^(s)]] :=
     Def{name} <- s,
-    Def{name} : DefT([], [ExpT(), PathT()], ExpT()) !.
+    Def{name} : DefT([], [ExpT(), TermT()], ExpT()) !.
 
   defNames[[ name@"resolve" ^(s)]] :=
     Def{name} <- s,
-    Def{name} : DefT([], [TermT()], PathT()) !.
+    Def{name} : DefT([], [TermT(), TermT()], TermT()) !.
     
   defNames[[ name@"length" ^(s)]] :=
     Def{name} <- s,
     Def{name} : DefT([], [TermT()], TermT()) !.
+    
+  defNames[[ name@"zip-with-index" ^(s)]] :=
+    Def{name} <- s,
+    Def{name} : DefT([], [TermT()], TermT()) !.
+    
+  defNames[[ name@"associate-index" ^(s)]] :=
+    Def{name} <- s,
+    Def{name} : DefT([], [TermT(), TermT(), TermT()], InstrT()) !.
+    
+  defNames[[ name@"continue" ^(s)]] :=
+    Def{name} <- s,
+    Def{name} : DefT([], [], InstrT()) !.
+    
+  defNames[[ name@"mk-closure" ^(s)]] :=
+    Def{name} <- s,
+    Def{name} : DefT([], [ExpT(), CodeT(), ExpT()], ExpT()) !.
+    
+  defNames[[ name@"closure-to-CF" ^(s)]] :=
+    Def{name} <- s,
+    Def{name} : DefT([], [ExpT()], ExpT()) !.
+    
+    

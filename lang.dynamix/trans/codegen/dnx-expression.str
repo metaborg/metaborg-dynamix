@@ -5,30 +5,32 @@ imports
   
   codegen/dnx-common
   codegen/dnx-compile
+  codegen/dnx-instruction
   codegen/fvm-primitive
   
   fvm-common
 
   
 rules
-  dnx-compile-exp(|b, p): exp -> out
+  dnx-compile-exp(|b, p, prop, blocks): exp -> out
     where
       bound_exp := <dnx-bind-args(|b)> exp;
-      out := <dnx-compile-exp(|p)> bound_exp
+      out := <dnx-compile-exp(|p, prop, blocks)> bound_exp
       
   dnx-bind-args(|binds): term -> <topdown(try(dnx-bind-args-(|binds)))> term
   dnx-bind-args-(|binds): DNXTerm_Var(name) -> <dnx-bind-args-(|binds)> DNX_Var(name)
+  dnx-bind-args-(|binds): DNX_Splice(var) -> <dnx-bind-args-(|binds)> var
   dnx-bind-args-(|binds): DNX_Var(name) -> res
     with
       res := <getfirst((\(key, val) -> val where <equal> (name, key)\))> binds
       
 rules
-  dnx-compile-exp(|p): DNX_Call(c_name, c_param, c_args) -> (instr, out_exp)
+  dnx-compile-exp(|p, prop, b): DNX_Call(c_name, c_param, c_args) -> (instr, out_exp)
     with
       s_name := <lookup-or-default(|c_name)> (c_name, p);
       s_param := <map((\ param -> <lookup-or-default(|param)> (param, p) \))> c_param;
-      (arg_instrs, args_exp) := <extract-instructions> <map(dnx-compile-exp(|p))> c_args;
-      (out_instr, out_exp) := <dnx-call(| s_name, s_param)> args_exp;
+      (arg_instrs, args_exp) := <extract-instructions> <map(dnx-compile-exp(|p, prop, b))> c_args;
+      (out_instr, out_exp) := <dnx-call(|s_name, s_param, prop, b)> args_exp;
       instr := <conc> (arg_instrs, out_instr)
    
   lookup-or-default(|default): (name, map) -> res
@@ -46,31 +48,40 @@ rules
     with
       (tail_instr, tail_arg) := <extract-instructions> t
       
-  dnx-compile-exp(|p): var@RGR_AutoVar(_) -> ([], var)
+  dnx-compile-exp(|p, prop, b): var@RGR_AutoVar(_) -> ([], var)
   
-//  dnx-compile-exp(|p): DNX_Term(term) -> <debug(!"out: ")> <dnx-compile-term> <debug(!"in: ")>term
-  dnx-compile-exp(|p): DNX_Term(term) -> <dnx-compile-term> term
-  
-  dnx-compile-exp(|p): DNX_Cont(name) -> <dnx-primitive-cont-label> name
-  dnx-compile-exp(|p): DNX_Link(name) -> <dnx-primitive-link-label> name
-  
-  dnx-compile-exp(|p): path@DNX_Path(_) -> path
+//  dnx-compile-exp(|p, prop, b): DNX_Term(term) -> <debug(!"out: ")> <dnx-compile-term> <debug(!"in: ")>term
+  dnx-compile-exp(|p, prop, b): DNX_Term(term) -> <dnx-compile-term> term
   
   // Just let the non-Dynamix arguments fall through
   // These are terms most often
-  dnx-compile-exp(|p): e -> e
+  dnx-compile-exp(|p, prop, b): e -> e
     where
       <not(string-starts-with(|"DNX_"))> <get-constructor> e
       
-  dnx-compile-exp(|p): e -> <fail> <debug(!"[Dynamix] Cannot compile expression: ")> e
+  dnx-compile-exp(|p, prop, b): DNX_Cont(name) -> <dnx-primitive-cont-label> name
+  dnx-compile-exp(|p, prop, b): DNX_Link(name) -> <dnx-primitive-link-label> name
+  
+  dnx-compile-exp(|p, prop, b): DNX_Quote(Block(body)) -> ([], label)
+    where
+      (out, None()) := <dnx-compile-body(|prop, b)> ([], p, body);
+      label := <dnx-primitive-autolabel> <newname> "l_";
+      <hashtable-put(|label, out)> b
+      
+  dnx-compile-exp(|p, prop, b): e -> <debug(!"[Dynamix]"); fail> $[Cannot compile expression: [e]]
      
 rules
   dnx-compile-term: DNXTerm_Int(val) -> val
-  dnx-compile-term: DNXTerm_String(string) -> string
+  dnx-compile-term: DNXTerm_String(string) -> <unquote(!"\"")> string
   dnx-compile-term: DNXTerm_Pat(name, args) -> <mkterm> (name, <map(dnx-compile-term)> args)
   dnx-compile-term: DNXTerm_List(elems) -> <map(dnx-compile-term)> elems
+  dnx-compile-term: DNXTerm_Tuple(elems) -> <map(dnx-compile-term); ListToTuple> elems
   dnx-compile-term: DNXTerm_ListTail(elems, tail) -> <concat> [<map(dnx-compile-term)> elems, <dnx-compile-term> tail]
   dnx-compile-term: var@RGR_AutoVar(_) -> var
+  dnx-compile-term: DNX_Cont(name) -> <dnx-primitive-cont-label> name
+  dnx-compile-term: DNX_Link(name) -> <dnx-primitive-link-label> name
+  
+ 
   dnx-compile-term: e -> e
   
 

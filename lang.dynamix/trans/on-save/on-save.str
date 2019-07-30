@@ -41,8 +41,7 @@ rules
       def_cases := <filter(
       					(\ Def(dname, param, args, Block(body)) -> DefCase(args, param, body) 
       					     where <equal> (<strip-annos> dname, cname)
-      					 \))> defs;
-      <geq> (<length> def_cases, 1)
+      					 \))> defs
       
    compile-imports: Imports(imports) -> <map(compile-imports)> imports
    compile-imports: Import(fname) -> fname

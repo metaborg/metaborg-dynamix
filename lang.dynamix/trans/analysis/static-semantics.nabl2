@@ -60,11 +60,11 @@ rules
   
   initLabels [[DNX_Link(lbl) ^(s) ]] :=
     LinkOrCont{lbl} <- s,
-    LinkOrCont{lbl}: LinkT().
+    LinkOrCont{lbl}: TermT().
     
   initLabels [[DNX_Cont(lbl) ^(s) ]] :=
     LinkOrCont{lbl} <- s,
-    LinkOrCont{lbl}: ContT().
+    LinkOrCont{lbl}: TermT().
     
   def[[Def(name, param, args, Block(instrs)) ^(q, s)]] :=
     Def{name} -> s,
@@ -87,7 +87,6 @@ rules
   type[[ Code()   ^(s) : CodeT()   ]].
   type[[ Exp()    ^(s) : ExpT()    ]].
   type[[ Instr()  ^(s) : InstrT()  ]].
-  type[[ Path()   ^(s) : PathT()   ]].
   type[[ Return() ^(s) : ReturnT() ]].
   
   
@@ -96,6 +95,9 @@ rules
     Var{name}:ty!.
     
   term[[DNXTerm_List(elems) ^(s) : TermT()]] :=
+    termMap [[elems ^(s) : TermT()]].
+    
+  term[[DNXTerm_Tuple(elems) ^(s) : TermT()]] :=
     termMap [[elems ^(s) : TermT()]].
     
   term[[DNXTerm_ListTail(elems, tail) ^(s) : TermT()]] :=
@@ -112,6 +114,8 @@ rules
   term[[DNXTerm_Int(_) ^(s) : TermT()]].
     
   term[[DNXTerm_String(_) ^(s) : TermT()]].
+  term[[DNX_Link(_) ^(s) : TermT()]].
+  term[[DNX_Cont(_) ^(s) : TermT()]].
   
   termMap [[ [] ^(s) : ty ]].
   termMap [[ [h|t] ^(s) : ty ]] :=
@@ -146,8 +150,6 @@ rules
   instr [[ DNX_Exp(exp) ^(q, s, qp, q', s', qp') : defrty ]] :=
     q == q', s == s', qp == qp', 
     exp[[exp ^(q, s, qp) : defrty]].
-    
-  exp [[DNX_Path(_) ^(q, s, qp) : PathT() ]].
   
   exp [[DNX_Link(lbl) ^(q, s, qp) : ty ]] :=
     LinkOrCont{lbl} -> s,
@@ -181,12 +183,12 @@ rules
     dparamty == [] | error $[Nesting parameterized rules is not allowed],
     argty == dargty, retty == dretty.
   
-  exp [[DNX_Quote(Block(instrs)) ^(q, s, qp) : ty]] :=
+  exp [[DNX_Quote(Block(instrs)) ^(q, s, qp) : CodeT()]] :=
     new quote_s, quote_s ---> q,
-    qty == ty | error $[Found [qty], expected [ty]],
+    qty <sub? InstrT() | error $[Found [qty], expected [InstrT()]],
     Fold3T(instr) [[instrs ^(q, quote_s, s) : qty]].
     
-  exp [[DNX_Splice(Var(name)) ^(q, s, qp) : ty ]] :=
+  exp [[DNX_Splice(DNX_Var(name)) ^(q, s, qp) : ty ]] :=
     Var{name} -> qp,
     Var{name} |-> d | error $[Variable [name] not declared] @name,
     d:sty,
@@ -200,6 +202,9 @@ rules
     d:ty!.
     
   expterm[[DNXTerm_List(elems) ^(s) : TermT()]] :=
+    exptermMap [[elems ^(s) : TermT()]].
+    
+  expterm[[DNXTerm_Tuple(elems) ^(s) : TermT()]] :=
     exptermMap [[elems ^(s) : TermT()]].
     
   expterm[[DNXTerm_ListTail(elems, tail) ^(s) : TermT()]] :=
@@ -216,6 +221,8 @@ rules
   expterm[[DNXTerm_Int(_) ^(s) : TermT()]].
     
   expterm[[DNXTerm_String(_) ^(s) : TermT()]].
+  expterm[[DNX_Link(_) ^(s) : TermT()]].
+  expterm[[DNX_Cont(_) ^(s) : TermT()]].
   
   exptermMap [[ [] ^(s) : ty ]].
   exptermMap [[ [h|t] ^(s) : ty ]] :=

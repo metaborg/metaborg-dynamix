@@ -42,14 +42,18 @@ context-free syntax
  Type.Code = <code>
  Type.Exp = <val>
  Type.Instr = <instr>
- Type.Path = <path>
  Type.Return = <return>
+ 
+ 
+ Pattern = Link
+ Pattern = Cont
  
  Pattern.DNXTerm_Var = <<ID>>
  Pattern.DNXTerm_Int = INT
  Pattern.DNXTerm_String = STRING
  Pattern.DNXTerm_Pat = <<CONSTRUCTOR>(<{Pattern ","}*>)>
  Pattern.DNXTerm_List = <[<{Pattern ","}*>]>
+ Pattern.DNXTerm_Tuple = <(<{Pattern ","}*>)>
  Pattern.DNXTerm_ListTail = <[<{Pattern ","}+> | <Pattern>]>
  Pattern.DNXTerm_ListLast = <[<Pattern> || <{Pattern ","}+>]>
  
@@ -62,15 +66,13 @@ context-free syntax
  Exp.DNX_Call = <<DEFNAME><DefParam?>(<{Exp ","}*>)>
  Exp.DNX_CallPrim = <<PRIMNAME><DefParam?>(<{Exp ","}*>)> {prefer}
  Exp.DNX_Var = <<ID>>
- Exp.DNX_Path = <[<{PathElem ","}*>]>
  
  Exp.DNX_Quote = [<[Block]>]
  Exp.DNX_Splice = <~<Exp>>
- Exp = Link
+ Exp = Link {prefer}
+ Exp = Cont {prefer}
  Link.DNX_Link = <&<LINKNAME>>
- Exp.DNX_Cont = <$<CONTNAME>>
+ Cont.DNX_Cont = <$<CONTNAME>>
  
- PathElem = Link
- PathElem.DNX_Slot = INTLEZ
  Exp.DNX_Term = Pattern {avoid}
  

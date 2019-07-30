@@ -9,12 +9,8 @@ signature
      InstrT : Type
      TermT  : Type
      DefT   : Type * list(Type) * Type -> Type
-     PathT  : Type
-     PathOrExpT : Type
-     LinkT  : Type
-     IntT   : Type
-     ContT  : Type
-     
+     TermOrExpT : Type
+          
      ReturnT: Type
      CodeT : Type
      
@@ -28,8 +24,6 @@ signature
      
 rules
   initTypes [[ _ ^(_) ]] :=
-  	PathT()  <sub! PathOrExpT(),
-  	ExpT()   <sub! PathOrExpT(),
-  	IntT()   <sub! TermT(),
-  	ReturnT() <sub! ExpT(),
+  	TermT()  <sub! TermOrExpT(),
+  	ExpT()   <sub! TermOrExpT(),
   	ReturnT() <sub! InstrT().

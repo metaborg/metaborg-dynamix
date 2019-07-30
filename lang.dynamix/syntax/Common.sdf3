@@ -62,6 +62,9 @@ lexical syntax
   PRIMNAME = "is-closure"
   PRIMNAME = "is-continuation"
   
+  PRIMNAME = "mk-closure"
+  PRIMNAME = "closure-to-CF"
+  
   PRIMNAME = "new"
   PRIMNAME = "size"
   PRIMNAME = "link"
@@ -72,7 +75,10 @@ lexical syntax
   PRIMNAME = "is-empty"
   
   PRIMNAME = "resolve"
+  PRIMNAME = "continue"
   PRIMNAME = "length"
+  PRIMNAME = "zip-with-index"
+  PRIMNAME = "associate-index"
   
 
   RULENAME = PRIMNAME        {reject}  

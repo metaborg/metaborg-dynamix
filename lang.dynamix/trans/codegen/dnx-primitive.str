@@ -2,38 +2,55 @@ module dnx-primitive
 
 imports
   nabl2/api
+  nabl2/shared/-
+  nabl2/runtime/analysis/-
   signatures/Dynamix-sig
   
   codegen/dnx-common
 
   
 rules
-   dnx-primitive-call: ("resolve", [name]) -> ([], <dnx-resolve-name(|"Var")> name)	// TODO: Correct ordering of slots in scopes (First referenced gets first slot maybe?)
-   dnx-primitive-call: ("length", [list]) -> ([], res) where <is-list> list
+   dnx-primitive-call(|p): ("resolve", [name, ns]) -> ([], <dnx-resolve-name(|ns, p)> name)	// TODO: Correct ordering of slots in scopes (First referenced gets first slot maybe?)
+//   dnx-primitive-call(|p): ("resolve-scope", [name, ns]) -> ([], <dnx-resolve-scope(|ns, p)> name)	// TODO: Correct ordering of slots in scopes (First referenced gets first slot maybe?)
+   
+   dnx-primitive-call(|p): ("length", [list]) -> ([], res) where <is-list> list
      with
        res := <length; int-to-string> list
+   dnx-primitive-call(|p): ("zip-with-index", [list]) -> ([], <map-with-index( (\ (idx, term) -> (<dec> idx, term) \) )> list) where <is-list> list
+   dnx-primitive-call(|p): ("associate-index", [idx, term, ns]) -> ([], None() ) 
+     where <is-int> idx; <is-string> ns
+     with
+       <nabl2-get-ast-analysis> term;
+       occ := <nabl2-mk-occurrence(|ns)> term;
+       TermIndex(termfile, termidx) := <nabl2-get-occurrence-index> occ;
+       <hashtable-push(|$[[termfile]_[termidx]], idx)> p
    
+   dnx-primitive-call(|p): ("continue", []) -> ([], None())
 rules
-  dnx-resolve-name(|namespace): name -> DNX_Path(path)
+  dnx-resolve-name(|namespace, properties): name -> path
       with
         a       := <nabl2-get-ast-analysis> name;
         ref-occ := <nabl2-mk-occurrence(|namespace)> name;
-        path    := <dnx-resolve-name-path(|namespace, name,  a)> ref-occ
+        path    := <dnx-resolve-name-path(|namespace, name, properties, a)> ref-occ
         
-    dnx-resolve-name-path(|namespace, name, a): ref-occ -> fvm_path 
+    dnx-resolve-name-path(|namespace, name, properties, a): ref-occ -> fvm_path 
       where
         (dec-occ, path) := <nabl2-get-resolved-name(|a)> ref-occ
       with
         (path_body, path_end) := <split-init-last> path;
-        fvm_path     := <concat>[<map(dnx-from-nabl2-path)> path_body, [<dnx-resolve-name-slot(|namespace, name, a)> dec-occ]]
+        fvm_path     := <concat>[<map(dnx-from-nabl2-path)> path_body, [<dnx-resolve-name-slot(|namespace, name, properties, a)> dec-occ]]
     
-    dnx-resolve-name-path(|namespace, name, a): ref-occ -> fvm_path 
+    dnx-resolve-name-path(|namespace, name, properties, a): ref-occ -> fvm_path 
       where
-        fvm_path := [<dnx-resolve-name-slot(|namespace, name, a)> ref-occ]
+        fvm_path := [<dnx-resolve-name-slot(|namespace, name, properties, a)> ref-occ]
         
-    dnx-resolve-name-slot(|namespace, name, a): occ -> idx
-      with 
+    dnx-resolve-name-slot(|namespace, name, prop, a): occ -> idx
+      where 
         TermIndex(termfile, termidx) := <nabl2-get-occurrence-index> occ;
+        idx := <hashtable-get(|$[[termfile]_[termidx]])> prop
+        
+    dnx-resolve-name-slot(|namespace, name, prop, a): occ -> idx
+      with
         scope := <nabl2-get-decl-scope(|a)> occ;
         occs := <nabl2-get-scope-decls(|a); filter(dnx-is-valid-occurrence(|["Var"]))> scope;
 		idx := <find-index(dnx-is-occurrence-match(|namespace, name))> occs
