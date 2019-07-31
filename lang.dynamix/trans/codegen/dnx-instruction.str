@@ -12,7 +12,9 @@ rules
   dnx-compile-body(|_, _): MatchError(error) -> ([], MatchError(error))
   dnx-compile-body(|properties, blockslocks): (binds, param_binds, body) -> out
     with
-      out := <dnx-compile-instr(|binds, param_binds, properties, blockslocks)> (body, [], None())
+      label_map := <filter(?DNX_Label(_)); map( (\ DNX_Label(name) -> (name, <newname; dnx-primitive-autolabel> name) \) )> body;
+      body_with_labels := <topdown(try( (\ DNX_Label(name) -> <lookup'> (name, label_map) \) ))> body;
+      out := <dnx-compile-instr(|binds, param_binds, properties, blockslocks)> (body_with_labels, [], None())
   
   
   dnx-compile-instr(|b, p, prop, blocks): ([], instr, exp) -> (instr, exp)
@@ -41,6 +43,11 @@ rules
       var_name := <newname> var;
       newbind := (var, res);
       out := <dnx-compile-instr(|[newbind|b], p, prop, blocks)> (t, instrs, None())
+      
+  dnx-compile-instr(|b, p, prop, blocks): ([label | t], instrs, None()) -> out
+    where
+     <dnx-primitive-is-label> label;
+     out := <dnx-compile-instr(|b, p, prop, blocks)> (t, <conc> (instrs, [label]), None())
   
-  dnx-compile-instr(|b, p, prop, blocks): ([e | _], _, _) -> <debug(!"[Dynamix] "); fail> $[undefined instr: [e]] 
+  dnx-compile-instr(|b, p, prop, blocks): ([e | _], _, _) -> <debug(!"[Dynamix] "); fail> $[undefined instr: [<write-to-string> e]] 
   

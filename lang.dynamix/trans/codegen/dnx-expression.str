@@ -68,7 +68,7 @@ rules
       label := <dnx-primitive-autolabel> <newname> "l_";
       <hashtable-put(|label, out)> b
       
-  dnx-compile-exp(|p, prop, b): e -> <debug(!"[Dynamix]"); fail> $[Cannot compile expression: [e]]
+  dnx-compile-exp(|p, prop, b): e -> <debug(!"[Dynamix]"); fail> $[Cannot compile expression: [<write-to-string> e]]
      
 rules
   dnx-compile-term: DNXTerm_Int(val) -> val

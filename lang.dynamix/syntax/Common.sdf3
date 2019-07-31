@@ -2,9 +2,10 @@ module Common
 
 lexical syntax
 
-  ID             = [a-zA-Z\_] [a-zA-Z0-9\_\'\-]*
+  ID             = [a-z\_] [a-zA-Z0-9\_\'\-]*
   DEFNAME        = [a-z] [a-zA-Z0-9\_\'\-]*
   CONSTRUCTOR    = [A-Z] [a-zA-Z0-9\_]*
+  LABEL          = [A-Z] [A-Z0-9\_]*
   INT            = "-"? [0-9]+ 
   INTLEZ         = [0-9]+ 
   STRING         = "\"" StringChar* "\"" 
@@ -94,6 +95,7 @@ lexical restrictions
   PRIMNAME      -/- [a-zA-Z0-9\_\-\']
   DEFNAME       -/- [a-zA-Z0-9\_\-\']
   CONSTRUCTOR   -/- [a-zA-Z0-9\_\-\']
+  LABEL         -/- [a-zA-Z0-9\_\-\']
   CONTNAME      -/- [a-z0-9]
   LINKNAME      -/- [A-Z0-9]
   

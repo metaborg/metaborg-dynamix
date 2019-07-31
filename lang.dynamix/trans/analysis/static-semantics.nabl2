@@ -150,6 +150,9 @@ rules
   instr [[ DNX_Exp(exp) ^(q, s, qp, q', s', qp') : defrty ]] :=
     q == q', s == s', qp == qp', 
     exp[[exp ^(q, s, qp) : defrty]].
+    
+  instr [[ DNX_Label(_) ^(q, s, qp, q', s', qp') : CodeT() ]] :=
+    q == q', s == s', qp == qp'.
   
   exp [[DNX_Link(lbl) ^(q, s, qp) : ty ]] :=
     LinkOrCont{lbl} -> s,
@@ -160,6 +163,8 @@ rules
     LinkOrCont{lbl} -> s,
     LinkOrCont{lbl} |-> d | error $[Continuation with label [lbl] is not defined],
     d : ty.
+    
+  exp [[DNX_Label(_) ^(q, s, qp) : CodeT() ]]. // TODO: Check if these resolve in the current rule
   
   exp [[DNX_Var(name) ^(q, s, qp) : ty ]] :=
     Var{name} -> s,

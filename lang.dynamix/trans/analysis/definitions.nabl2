@@ -32,7 +32,7 @@ rules
     
   defNames[[ name@"jumpz" ^(s)]] :=
     Def{name} <- s,
-    Def{name} : DefT([], [ExpT(), InstrT(), InstrT()], InstrT()).
+    Def{name} : DefT([], [ExpT(), CodeT(), CodeT()], InstrT()).
 //    then <sub? CodeT(),
 //    then == else | error $[Both branches in the jump should have the same type].
     // m == then meet else, m != CodeT()
