@@ -12,18 +12,25 @@ imports
 
   
 rules
+  // Quotes need to skip this step, as their scoping is completely different
+  dnx-compile-exp(|b, p, prop, blocks): DNX_Quote(Block(body)) -> ([], label)
+    with
+      quoted_binds_needed := <collect-all( (\ DNX_Splice(DNX_Var(var)) -> var\) )> body;
+      quoted_binds := <map( (\ name -> ($[~_[name]], <lookup> (name, b)) \) )> quoted_binds_needed;
+      (out, None()) := <dnx-compile-body(|prop, b)> (quoted_binds, p, body);
+      label := <debug(!"lbl name: ")> <newname; dnx-primitive-autolabel> "l_";
+      <hashtable-put(|label, out)> blocks
+      
   dnx-compile-exp(|b, p, prop, blocks): exp -> out
-    where
+    with
       bound_exp := <dnx-bind-args(|b)> exp;
       out := <dnx-compile-exp(|p, prop, blocks)> bound_exp
       
   dnx-bind-args(|binds): term -> <topdown(try(dnx-bind-args-(|binds)))> term
   dnx-bind-args-(|binds): DNXTerm_Var(name) -> <dnx-bind-args-(|binds)> DNX_Var(name)
-  dnx-bind-args-(|binds): DNX_Splice(var) -> <dnx-bind-args-(|binds)> var
-  dnx-bind-args-(|binds): DNX_Var(name) -> res
-    with
-      res := <getfirst((\(key, val) -> val where <equal> (name, key)\))> binds
-      
+  dnx-bind-args-(|binds): DNX_Splice(DNX_Var(name)) -> <lookup'> ($[~_[name]], binds)
+  dnx-bind-args-(|binds): DNX_Var(name) -> <lookup'> (name, binds)
+       
 rules
   dnx-compile-exp(|p, prop, b): DNX_Call(c_name, c_param, c_args) -> (instr, out_exp)
     with
@@ -52,23 +59,18 @@ rules
   
 //  dnx-compile-exp(|p, prop, b): DNX_Term(term) -> <debug(!"out: ")> <dnx-compile-term> <debug(!"in: ")>term
   dnx-compile-exp(|p, prop, b): DNX_Term(term) -> <dnx-compile-term> term
-  
-  // Just let the non-Dynamix arguments fall through
-  // These are terms most often
-  dnx-compile-exp(|p, prop, b): e -> e
-    where
-      <not(string-starts-with(|"DNX_"))> <get-constructor> e
       
   dnx-compile-exp(|p, prop, b): DNX_Cont(name) -> <dnx-primitive-cont-label> name
   dnx-compile-exp(|p, prop, b): DNX_Link(name) -> <dnx-primitive-link-label> name
-  
-  dnx-compile-exp(|p, prop, b): DNX_Quote(Block(body)) -> ([], label)
-    where
-      (out, None()) := <dnx-compile-body(|prop, b)> ([], p, body);
-      label := <dnx-primitive-autolabel> <newname> "l_";
-      <hashtable-put(|label, out)> b
       
-  dnx-compile-exp(|p, prop, b): e -> <debug(!"[Dynamix]"); fail> $[Cannot compile expression: [<write-to-string> e]]
+      
+  // Just let the non-Dynamix arguments fall through
+  // These are terms most often
+  dnx-compile-exp(|p, prop, b): e -> e
+    with
+      <not(string-starts-with(|"DNX_"))> <get-constructor> e
+      
+  dnx-compile-exp(|p, prop, b): e -> <debug(!"[Dynamix] "); fail> $[Cannot compile expression: [<write-to-string> e]]
      
 rules
   dnx-compile-term: DNXTerm_Int(val) -> val

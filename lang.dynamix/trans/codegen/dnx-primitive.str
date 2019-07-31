@@ -11,7 +11,7 @@ imports
   
 rules
    dnx-primitive-call(|p): ("resolve", [name, ns]) -> ([], <dnx-resolve-name(|ns, p)> name)	// TODO: Correct ordering of slots in scopes (First referenced gets first slot maybe?)
-//   dnx-primitive-call(|p): ("resolve-scope", [name, ns]) -> ([], <dnx-resolve-scope(|ns, p)> name)	// TODO: Correct ordering of slots in scopes (First referenced gets first slot maybe?)
+   dnx-primitive-call(|p): ("resolve-scope", [name, ns]) -> ([], <dnx-resolve-name(|ns, p); split-init-last; Fst> name)	// TODO: Correct ordering of slots in scopes (First referenced gets first slot maybe?)
    
    dnx-primitive-call(|p): ("length", [list]) -> ([], res) where <is-list> list
      with
@@ -19,13 +19,28 @@ rules
    dnx-primitive-call(|p): ("zip-with-index", [list]) -> ([], <map-with-index( (\ (idx, term) -> (<dec> idx, term) \) )> list) where <is-list> list
    dnx-primitive-call(|p): ("associate-index", [idx, term, ns]) -> ([], None() ) 
      where <is-int> idx; <is-string> ns
+     with <dnx-primitive-associate-(|p, "idx")> (idx, term, ns)
+     
+   dnx-primitive-call(|p): ("associate-label", [lbl, term, ns]) -> ([], None() ) 
+     where <is-string> ns
+     with <dnx-primitive-associate-(|p, "lbl")> (lbl, term, ns)
+     
+   dnx-primitive-associate-(|p, type): (val, term, ns) -> term 
      with
        <nabl2-get-ast-analysis> term;
        occ := <nabl2-mk-occurrence(|ns)> term;
        TermIndex(termfile, termidx) := <nabl2-get-occurrence-index> occ;
-       <hashtable-push(|$[[termfile]_[termidx]], idx)> p
+       <hashtable-put(|$[[type]_[termfile]_[termidx]], val)> p
    
    dnx-primitive-call(|p): ("continue", []) -> ([], None())
+   
+   dnx-primitive-call(|p): ("resolve-label", [name, ns]) -> ([], label)
+     with
+       a       := <nabl2-get-ast-analysis> name;
+       ref-occ := <nabl2-mk-occurrence(|ns)> name;
+       TermIndex(termfile, termidx) := <nabl2-get-resolved-name(|a); Fst; nabl2-get-occurrence-index> ref-occ;
+       label := <debug> <hashtable-get(|$[lbl_[termfile]_[termidx]])> p
+
 rules
   dnx-resolve-name(|namespace, properties): name -> path
       with
@@ -47,7 +62,7 @@ rules
     dnx-resolve-name-slot(|namespace, name, prop, a): occ -> idx
       where 
         TermIndex(termfile, termidx) := <nabl2-get-occurrence-index> occ;
-        idx := <hashtable-get(|$[[termfile]_[termidx]])> prop
+        idx := <hashtable-get(|$[idx_[termfile]_[termidx]])> prop
         
     dnx-resolve-name-slot(|namespace, name, prop, a): occ -> idx
       with

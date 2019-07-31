@@ -37,7 +37,7 @@ rules
     
   dnx-call(|defname, param, properties, blocks): args -> out
     where
-      defs := <dnx-get-defs-by-name> defname
+      defs := <debug(!"call: "); dnx-get-defs-by-name> defname
     with
       match := <getfirst(dnx-match-rule(|args, param)) <+ !None()> defs;
       bound_body := <dnx-compile-get-out(|defname, args)> match;

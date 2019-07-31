@@ -52,7 +52,7 @@ rules
 
   defNames[[ name@"newCF" ^(s)]] :=
     Def{name} <- s,
-    Def{name} : DefT([], [ExpT(), InstrT(), TermT()], ExpT()) !.
+    Def{name} : DefT([], [ExpT(), CodeT(), ExpT()], ExpT()) !.
 
   defNames[[ name@"getCF" ^(s)]] :=
     Def{name} <- s,
@@ -176,6 +176,14 @@ rules
   defNames[[ name@"resolve" ^(s)]] :=
     Def{name} <- s,
     Def{name} : DefT([], [TermT(), TermT()], TermT()) !.
+
+  defNames[[ name@"resolve-scope" ^(s)]] :=
+    Def{name} <- s,
+    Def{name} : DefT([], [TermT(), TermT()], TermT()) !.
+
+  defNames[[ name@"resolve-label" ^(s)]] :=
+    Def{name} <- s,
+    Def{name} : DefT([], [TermT(), TermT()], CodeT()) !.
     
   defNames[[ name@"length" ^(s)]] :=
     Def{name} <- s,
@@ -188,6 +196,10 @@ rules
   defNames[[ name@"associate-index" ^(s)]] :=
     Def{name} <- s,
     Def{name} : DefT([], [TermT(), TermT(), TermT()], InstrT()) !.
+    
+  defNames[[ name@"associate-label" ^(s)]] :=
+    Def{name} <- s,
+    Def{name} : DefT([], [CodeT(), TermT(), TermT()], InstrT()) !.
     
   defNames[[ name@"continue" ^(s)]] :=
     Def{name} <- s,

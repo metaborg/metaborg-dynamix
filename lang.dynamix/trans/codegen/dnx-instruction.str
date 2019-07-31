@@ -20,24 +20,25 @@ rules
   dnx-compile-instr(|b, p, prop, blocks): ([], instr, exp) -> (instr, exp)
   
   dnx-compile-instr(|b, p, prop, blocks): ([DNX_Exp(exp) | t], instrs, None()) -> out
-    where
+    with
       (r_instr, r_exp) := <dnx-compile-exp(|b, p, prop, blocks)> exp;
       out := <dnx-compile-instr(|b, p, prop, blocks)> (t, <conc> (instrs, r_instr), r_exp)
       
   dnx-compile-instr(|b, p, prop, blocks): ([DNX_Return(exp) | t], instrs, None()) -> out
-    where
+    with
       (r_instr, r_exp) := <dnx-compile-exp(|b, p, prop, blocks)> exp;
       out := <dnx-compile-instr(|b, p, prop, blocks)> (t, <conc> (instrs, r_instr), r_exp)
       
   dnx-compile-instr(|b, p, prop, blocks): ([DNX_BindExp(var, val) | t], instrs, None() ) -> out
     where
-      dnx_var := <lookup'> (var, b);	// Already bound
+      dnx_var := <lookup'> (var, b)	// Already bound
+    with
       (r_instr, r_exp) := <dnx-compile-exp(|b, p, prop, blocks)> val;
       (a_instr, None()) := <dnx-primitive-assign> (dnx_var, r_exp);
       out := <dnx-compile-instr(|b, p, prop, blocks)> (t, <conc> (instrs, r_instr, a_instr), None())
       
   dnx-compile-instr(|b, p, prop, blocks): ([DNX_BindExp(var, val) | t], instrs, None() ) -> out
-    where
+    with
       (r_instr, r_exp) := <dnx-compile-exp(|b, p, prop, blocks)> val;
       new_var := <newname; dnx-primitive-autovar> var;
       (a_instr, None()) := <dnx-primitive-assign> (new_var, r_exp);
@@ -46,13 +47,14 @@ rules
       
   dnx-compile-instr(|b, p, prop, blocks): ([DNX_Bind(var, val) | t], instrs, None() ) -> out
     where
-      <lookup'> (var, b);	// Already bound
+      <lookup'> (var, b)	// Already bound
+    with
       (_, res) := <dnx-compile-exp(|b, p, prop, blocks)> val;
       b' := <update-map> (b, var, res); // Update the bound value
       out := <dnx-compile-instr(|b', p, prop, blocks)> (t, instrs, None())
       
   dnx-compile-instr(|b, p, prop, blocks): ([DNX_Bind(var, val) | t], instrs, None() ) -> out
-    where
+    with
       (_, res) := <dnx-compile-exp(|b, p, prop, blocks)> val;
       var_name := <newname> var;
       newbind := (var, res);
@@ -60,8 +62,9 @@ rules
       
   dnx-compile-instr(|b, p, prop, blocks): ([label | t], instrs, None()) -> out
     where
-     <dnx-primitive-is-label> label;
-     out := <dnx-compile-instr(|b, p, prop, blocks)> (t, <conc> (instrs, [label]), None())
+      <dnx-primitive-is-label> label
+    with
+      out := <dnx-compile-instr(|b, p, prop, blocks)> (t, <conc> (instrs, [label]), None())
   
-  dnx-compile-instr(|b, p, prop, blocks): ([e | _], _, _) -> <debug(!"[Dynamix] "); fail> $[undefined instr: [<write-to-string> e]] 
+  dnx-compile-instr(|b, p, prop, blocks): ([e | _], _, _) -> <debug(!"[Dynamix] "); fail> $[Undefined instr: [<write-to-string> e]] 
   
