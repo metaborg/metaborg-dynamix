@@ -31,11 +31,25 @@ rules
       
   dnx-compile-instr(|b, p, prop, blocks): ([DNX_BindExp(var, val) | t], instrs, None() ) -> out
     where
+      dnx_var := <lookup'> (var, b);	// Already bound
       (r_instr, r_exp) := <dnx-compile-exp(|b, p, prop, blocks)> val;
-      var_name := <newname> var;
-      (a_instr, None()) := <dnx-primitive-assign> (<dnx-primitive-autovar> var_name, r_exp);
-      newbind := (var, RGR_AutoVar(var_name));
+      (a_instr, None()) := <dnx-primitive-assign> (dnx_var, r_exp);
+      out := <dnx-compile-instr(|b, p, prop, blocks)> (t, <conc> (instrs, r_instr, a_instr), None())
+      
+  dnx-compile-instr(|b, p, prop, blocks): ([DNX_BindExp(var, val) | t], instrs, None() ) -> out
+    where
+      (r_instr, r_exp) := <dnx-compile-exp(|b, p, prop, blocks)> val;
+      new_var := <newname; dnx-primitive-autovar> var;
+      (a_instr, None()) := <dnx-primitive-assign> (new_var, r_exp);
+      newbind := (var, new_var);
       out := <dnx-compile-instr(|[newbind|b], p, prop, blocks)> (t, <conc> (instrs, r_instr, a_instr), None())
+      
+  dnx-compile-instr(|b, p, prop, blocks): ([DNX_Bind(var, val) | t], instrs, None() ) -> out
+    where
+      <lookup'> (var, b);	// Already bound
+      (_, res) := <dnx-compile-exp(|b, p, prop, blocks)> val;
+      b' := <update-map> (b, var, res); // Update the bound value
+      out := <dnx-compile-instr(|b', p, prop, blocks)> (t, instrs, None())
       
   dnx-compile-instr(|b, p, prop, blocks): ([DNX_Bind(var, val) | t], instrs, None() ) -> out
     where

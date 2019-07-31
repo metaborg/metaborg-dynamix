@@ -31,3 +31,9 @@ rules
     find-index(s): [] -> <fail> 
     find-index(s): [name|_] -> 0 where <s> name
     find-index(s): [h|t] -> <find-index(s); inc> t
+    
+    update-map: ([], key, val) -> <fail>
+    update-map: ([(key, _) | t], key, val) -> [(key, val) | t]
+    update-map: ([ h | t], key, val) -> [ h | <update-map> (t, key, val)]
+    
+    
