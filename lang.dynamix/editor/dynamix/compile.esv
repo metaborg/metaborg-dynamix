@@ -4,4 +4,4 @@ menus
   
   menu: "Dynamix" (openeditor)
     action: "Compile to FVM"    = dnx-compile-to-fvm
-    action: "Compile show flat" = dnx-compile
+    action: "Compile show flat" = dnx-compile-to-flat-ast
