@@ -5,3 +5,4 @@ menus
   menu: "Dynamix" (openeditor)
     action: "Compile to FVM"    = dnx-compile-to-fvm
     action: "Compile show flat" = dnx-compile-to-flat-ast
+    action: "Compile show Dynamix spec aterm" = dnx-show-spec

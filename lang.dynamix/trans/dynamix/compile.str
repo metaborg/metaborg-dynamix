@@ -31,4 +31,11 @@ rules // Debugging
     ; fname    := <base-filename; remove-extension> path
     ; compiled_spec := <dnx-load-compiled-spec>
     ; result   := <dnx-compile> (ast, compiled_spec)
+  
+  dnx-show-spec:
+    (_, _, ast, path, project-path) -> (filename, result)
+    with
+      filename := <guarantee-extension(|"dnx.aterm")> path
+    ; fname    := <base-filename; remove-extension> path
+    ; result := <dnx-load-compiled-spec>
     
