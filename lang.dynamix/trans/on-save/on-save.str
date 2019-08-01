@@ -23,7 +23,9 @@ rules
   compile-dnx-spec: Module(_,imports,_, Defs(types), Defs(defs), candl) -> out 
     with
       // TODO: Check if this path works on Windows
-      grouped_defs := <map(make-normDef(|defs))> types;
+      map := <new-hashtable>;
+      <map(make-normDef(|map))> defs;
+      grouped_defs := <hashtable-getlist; map( (\ (name, cases) -> DefGroup(name, <reverse> cases) \) )> map;
       imports' := <mapconcat(compile-imports)> imports;
       out := <strip-annos> NormModule(imports', candl, <resolve-binds-all> grouped_defs)
       
@@ -35,14 +37,12 @@ rules
       type := <nabl2-get-type(|a)> occ;
       <equal> ("ExpT", <get-constructor> type)
   
-  make-normDef(|defs): type@TypeDef(name, _, _, _) -> DefGroup(<strip-annos> name, def_cases)
+  make-normDef(|ht): d@Def(name, param, args, Block(body)) -> d
     where
+      defcase := DefCase(args, param, body);
       cname := <strip-annos> name;
-      def_cases := <filter(
-      					(\ Def(dname, param, args, Block(body)) -> DefCase(args, param, body) 
-      					     where <equal> (<strip-annos> dname, cname)
-      					 \))> defs
-      
+      <hashtable-push(|cname, defcase)> ht
+   
    compile-imports: Imports(imports) -> <map(compile-imports)> imports
    compile-imports: Import(fname) -> fname
    
