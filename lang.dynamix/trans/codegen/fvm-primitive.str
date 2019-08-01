@@ -15,8 +15,8 @@ rules
   dnx-primitive-autovar: name -> RGR_AutoVar(name)
   dnx-primitive-autolabel: name -> FVM_AutoLabel(name)
   dnx-primitive-autosize: _ -> FVM_AutoSize()
-  dnx-primitive-is-var: e@RGR_AutoVar(_) -> e
-  dnx-primitive-is-label: e@FVM_AutoLabel(_) -> e
+  dnx-primitive-is-var: RGR_AutoVar(name) -> name
+  dnx-primitive-is-label: FVM_AutoLabel(name) -> name
   dnx-primitive-cont-label: name -> FVM_Cont(name)
   dnx-primitive-link-label: name -> FVM_Link(name)
   dnx-primitive-assign: (var, val) -> ([RGR_Assign(var, val)], None())

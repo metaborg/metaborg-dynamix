@@ -15,11 +15,17 @@ rules
       NormModule(name, candl, defs) := dnx-module;
       <map(dnx-store-def)> defs;
       blocks := <new-hashtable>;
-      (instr, err) := <dnx-call(|"eval", [], <new-hashtable>, blocks)> [source_ast];
+      properties := <new-hashtable>;
+      (instr, err) := <dnx-call(|"eval", [], properties, blocks)> [source_ast];
+      tmp_labels := <hashtable-getlist; filter( (\ (key, val) -> (val, bound_val) where bound_key := <string-starts-with(|"tmp_lbl_"); string-replace(|"tmp_lbl_", "lbl_")> key; bound_val := <hashtable-get(|bound_key)> properties \) )> properties;
       compiled_header := <dnx-primitive-mk-header> candl;
-      blocks_instr := <hashtable-getlist; map((\ (label, body) -> [(label, <dnx-primitive-autosize>) | body] \)); concat> blocks; 
-      out := <dnx-mk-final-output> (compiled_header, <conc> (instr, blocks_instr), err)
+      blocks_instr := <hashtable-getlist; map((\ (label, body) -> [(label, <dnx-primitive-autosize>) | body] \)); concat> blocks;
+      body2 := <conc> (instr, blocks_instr);
+      body3 := <foldl(replace-tmp-labels)> (tmp_labels, body2); 
+      out := <dnx-mk-final-output> (compiled_header, body3, err)
       
+  replace-tmp-labels: ((key, val), body) -> <topdown(try(?(key); !val))> body
+  
   dnx-mk-final-output: (header, instr, None()) -> out
     where
       errors := <collect-all(?(MatchError(_)))> instr;
@@ -37,7 +43,7 @@ rules
     
   dnx-call(|defname, param, properties, blocks): args -> out
     where
-      defs := <debug(!"call: "); dnx-get-defs-by-name> defname
+      defs := <dnx-get-defs-by-name> defname
     with
       match := <getfirst(dnx-match-rule(|args, param)) <+ !None()> defs;
       bound_body := <dnx-compile-get-out(|defname, args)> match;

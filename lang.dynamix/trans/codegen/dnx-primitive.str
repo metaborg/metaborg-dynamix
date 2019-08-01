@@ -7,11 +7,12 @@ imports
   signatures/Dynamix-sig
   
   codegen/dnx-common
+  codegen/fvm-primitive
 
   
 rules
    dnx-primitive-call(|p): ("resolve", [name, ns]) -> ([], <dnx-resolve-name(|ns, p)> name)	// TODO: Correct ordering of slots in scopes (First referenced gets first slot maybe?)
-   dnx-primitive-call(|p): ("resolve-scope", [name, ns]) -> ([], <dnx-resolve-name(|ns, p); split-init-last; Fst> name)	// TODO: Correct ordering of slots in scopes (First referenced gets first slot maybe?)
+   dnx-primitive-call(|p): ("resolve-scope", [name, ns]) -> ([], <dnx-resolve-name(|ns, p); split-init-last; Fst> name)
    
    dnx-primitive-call(|p): ("length", [list]) -> ([], res) where <is-list> list
      with
@@ -34,12 +35,27 @@ rules
    
    dnx-primitive-call(|p): ("continue", []) -> ([], None())
    
+   
+   // If the label is already defined, we just resolve it and get the value.
+   // If it is a forward reference, we create a new one here. (On assoc-site we then get instead of set it)
    dnx-primitive-call(|p): ("resolve-label", [name, ns]) -> ([], label)
-     with
+     where
        a       := <nabl2-get-ast-analysis> name;
        ref-occ := <nabl2-mk-occurrence(|ns)> name;
        TermIndex(termfile, termidx) := <nabl2-get-resolved-name(|a); Fst; nabl2-get-occurrence-index> ref-occ;
-       label := <debug> <hashtable-get(|$[lbl_[termfile]_[termidx]])> p
+       label := <dnx-primitive-resolve-label(|p)> (termfile, termidx)
+       
+   dnx-primitive-resolve-label(|p): (file, idx) -> label
+     where
+       key := $[lbl_[file]_[idx]];
+       label := <hashtable-get(|key)> p
+       
+   dnx-primitive-resolve-label(|p): (file, idx) -> label
+     where
+       key := $[tmp_lbl_[file]_[idx]];
+       label := <newname; dnx-primitive-autolabel> "tmp_l_";
+       <hashtable-put(|key, label)> p
+   
 
 rules
   dnx-resolve-name(|namespace, properties): name -> path

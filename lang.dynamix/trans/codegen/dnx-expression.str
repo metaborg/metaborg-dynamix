@@ -18,7 +18,7 @@ rules
       quoted_binds_needed := <collect-all( (\ DNX_Splice(DNX_Var(var)) -> var\) )> body;
       quoted_binds := <map( (\ name -> ($[~_[name]], <lookup> (name, b)) \) )> quoted_binds_needed;
       (out, None()) := <dnx-compile-body(|prop, b)> (quoted_binds, p, body);
-      label := <debug(!"lbl name: ")> <newname; dnx-primitive-autolabel> "l_";
+      label := <newname; dnx-primitive-autolabel> "l_";
       <hashtable-put(|label, out)> blocks
       
   dnx-compile-exp(|b, p, prop, blocks): exp -> out
