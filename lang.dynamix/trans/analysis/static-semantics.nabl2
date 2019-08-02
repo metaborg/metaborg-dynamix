@@ -9,8 +9,29 @@ imports
 rules
 
   init ^ (s) := new s.
+  [[mod@Module(name@"dynamic-semantics", _, _, _, _, DNX_Header([], [_|_], [_|_])) ^(s)]] :=
+    false | error $[Missing 'link-labels' in signature] @name,
+    module[[mod ^(s)]].
 
-  [[Module(name, imports, prim_names, Defs(types), Defs(defs), candl) ^(s)]] :=
+  [[mod@Module(name@"dynamic-semantics", _, _, _, _, DNX_Header([_|_], [], [_|_])) ^(s)]] :=
+    false | error $[Missing 'continuations' in signature] @name,
+    module[[mod ^(s)]].
+
+  [[mod@Module(name@"dynamic-semantics", _, _, _, _, DNX_Header([_|_], [_|_], [])) ^(s)]] :=
+    false | error $[Missing 'namespaces' in signature] @name,
+    module[[mod ^(s)]].
+
+  [[mod@Module("dynamic-semantics", _, _, _, _, _) ^(s)]] :=
+    module[[mod ^(s)]].
+
+  [[mod@Module(name, _, _, _, _, DNX_Header([_|_], [_|_], [_|_])) ^(s)]] :=
+    false | error $[Signature only allowed in the main file (for now) ] @name,
+    module[[mod ^(s)]].
+
+  [[mod@Module(_, _, _, _, _, _) ^(s)]] :=
+    module[[mod ^(s)]].
+  
+  module[[Module(name, imports, prim_names, Defs(types), Defs(defs), DNX_Header(links, continuations, namespaces)) ^(s)]] :=
     new module, module ---> s,
     Module{name} <- s,
     Module{name} ===> module, 
@@ -19,7 +40,8 @@ rules
     
     Map1(import) [[imports ^(module)]],
     initTypes[[ name ^(s)]],
-    Map1(initLabels) [[ candl ^(s)]],
+    Map1(initLinks) [[ links ^(s)]],
+    Map1(initConts) [[ continuations ^(s)]],
     Map1(defNames) [[prim_names ^(module)]],
     Map1(typeDecl) [[types ^(module)]],
     new defs_s, defs_s ---> module,
@@ -27,10 +49,7 @@ rules
     Map1(def) [[defs ^(quotes_s, defs_s)]].
     
     
-  import [[Imports(imports) ^(s) ]] :=
-    Map1(import) [[imports ^(s) ]].
-    
-  import [[Import(name) ^(s)]] :=
+  import [[name ^(s)]] :=
     Module{name} -> s,
     Module{name} |-> d | error $[Cannot resolve module '[name]'] @name,
     Module{name} <=== s.
@@ -58,13 +77,27 @@ rules
     Map1T(type) [[args ^(s) : argty]].
       
   
-  initLabels [[DNX_Link(lbl) ^(s) ]] :=
-    LinkOrCont{lbl} <- s,
-    LinkOrCont{lbl}: TermT().
+  initLinks [[(idx, lbl) ^(s) ]] :=
+    Link{lbl} <- s,
+    Link{lbl}: TermT(),
+    Link{lbl}.index := idx.
     
-  initLabels [[DNX_Cont(lbl) ^(s) ]] :=
-    LinkOrCont{lbl} <- s,
-    LinkOrCont{lbl}: TermT().
+  initConts [[(0, lbl) ^(s) ]] :=
+    false | note $[Return of the initial control frame] @lbl,
+    Cont{lbl} <- s,
+    Cont{lbl}: TermT(),
+    Cont{lbl}.index := idx.
+    
+  initConts [[(1, lbl) ^(s) ]] :=
+    false | note $[Exeption handler of the initial control frame] @lbl,
+    Cont{lbl} <- s,
+    Cont{lbl}: TermT(),
+    Cont{lbl}.index := idx.
+    
+  initConts [[(idx, lbl) ^(s) ]] :=
+    Cont{lbl} <- s,
+    Cont{lbl}: TermT(),
+    Cont{lbl}.index := idx.
     
   def[[Def(name, param, args, Block(instrs)) ^(q, s)]] :=
     Def{name} -> s,
@@ -155,13 +188,13 @@ rules
     q == q', s == s', qp == qp'.
   
   exp [[DNX_Link(lbl) ^(q, s, qp) : ty ]] :=
-    LinkOrCont{lbl} -> s,
-    LinkOrCont{lbl} |-> d | error $[Link with label [lbl] is not defined],
+    Link{lbl} -> s,
+    Link{lbl} |-> d | error $[Link with label [lbl] is not defined],
     d : ty.
   
   exp [[DNX_Cont(lbl) ^(q, s, qp) : ty ]] :=
-    LinkOrCont{lbl} -> s,
-    LinkOrCont{lbl} |-> d | error $[Continuation with label [lbl] is not defined],
+    Cont{lbl} -> s,
+    Cont{lbl} |-> d | error $[Continuation with label [lbl] is not defined],
     d : ty.
     
   exp [[DNX_Label(_) ^(q, s, qp) : CodeT() ]]. // TODO: Check if these resolve in the current rule

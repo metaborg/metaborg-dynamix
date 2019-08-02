@@ -9,15 +9,34 @@ context-free start-symbols
 context-free syntax
 
  Module.Module = <
-  module <ID> 
-   <Imports*>
-   <Definitions*>
+  module <MODULENAME> 
+   <ModuleElem*>
  >
+ 
+ ModuleElem = Imports
+ ModuleElem = Header
+ ModuleElem = Definitions
+ 
+ Header.Header = <signature
+  <HeaderElem*>
+>
+ HeaderElem.Links = <link-labels
+  <LinkAlias*>
+>
+ HeaderElem.Continuations = <continuations
+  <ContinuationAlias*>
+>
+ HeaderElem.Namespaces = <namespaces
+  <NameSpace*>
+>
+ NameSpace.NameSpace = NAMESPACE
+ LinkAlias.LinkAlias = <<{LINKNAME "="}+>>
+ ContinuationAlias.ContinuationAlias = <<{CONTNAME "="}+>>
  
  Imports.Imports = <imports
   <Import*>
 >
- Import.Import = ID
+ Import.Import = MODULENAME
 
  Definitions.Defs = <rules
   <Definition*>

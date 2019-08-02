@@ -83,7 +83,7 @@ rules
     dnx-resolve-name-slot(|namespace, name, prop, a): occ -> idx
       with
         scope := <nabl2-get-decl-scope(|a)> occ;
-        occs := <nabl2-get-scope-decls(|a); filter(dnx-is-valid-occurrence(|["Var", "Field"]))> scope;
+        occs := <nabl2-get-scope-decls(|a); filter(dnx-is-valid-occurrence(|<hashtable-get(|"namespaces")> prop))> scope;
 		idx := <find-index(dnx-is-occurrence-match(|namespace, name))> occs
     
     dnx-is-valid-occurrence(|namespaces): occ@Occurrence(Namespace(ns), _, _) -> occ

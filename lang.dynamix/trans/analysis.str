@@ -10,7 +10,7 @@ imports
   codegen/dnx-common
   
 rules // Analysis
-  desugar = collect-def-types; collect-prim-names; remove-prim-calls; desugar-call-params-all
+  desugar = collect-def-types; collect-prim-names; remove-prim-calls; desugar-call-params-all; build-header
   editor-analyze = nabl2-analyze(desugar)
 
 rules // Debugging
@@ -40,19 +40,29 @@ rules
   desugar-call-params: TypeDef(name, None(), argsty, retty) -> TypeDef(name, [], argsty, retty)
   desugar-call-params: TypeDef(name, Some(ParamTypeList(params)), argsty, retty) -> TypeDef(name, params, argsty, retty)
   
-  collect-def-types: Module(name, imports, defs) -> Module(name, imports, [], Defs(type_decls), Defs(def_decls), candl)
+  collect-def-types: Module(name, definitions) -> Module(name, imports, [], Defs(type_decls), Defs(def_decls), header)
     where
-      candl := <concat> [<get-standard-candl> name, []];
+      (imports, header, defs) := <split-list3(?Imports(_), ?Header(_), ?Defs(_))> definitions;
       all_defs := <mapconcat((\ Defs(d) -> d \))> defs;
       def_decls  := <filter(?Def(_, _, _, _))> all_defs;
       type_decls := <filter(?TypeDef(_, _, _, _))> all_defs
-      
-  get-standard-candl: "dynamic-semantics" -> [DNX_Link("P"), DNX_Link("I"), DNX_Cont("ret"), DNX_Cont("exc"), DNX_Cont("next")]
-  get-standard-candl: _ -> []
   
   collect-prim-names: Module(name, imports, _, types, defs, candl) -> Module(name, imports, prim_names, types, defs, candl)
     where
       prim_names := <collect-all((\DNX_CallPrim(name, param, args) -> name\))>
       
   remove-prim-calls = topdown(try((\DNX_CallPrim(name, param, args) -> DNX_Call(name, param, args)\)))
+  
+  build-header: Module(name, imports, primitives, types, defs, header_elems) -> Module(name, imports', primitives, types, defs, header')
+    where
+      headers := <mapconcat(?Header(a); !a)> header_elems;
+      (links, continuations, namespaces) := <split-list3(?Links(_), ?Continuations(_), ?Namespaces(_))> headers;
+      imports'       := <mapconcat(?Imports(i); !i); map( (\ Import(i) -> i \) )> imports;
+      links'         := <mapconcat(?Links(l); !l);         map-with-index( (\ (idx, LinkAlias(l))         -> <map( (\e -> (<dec>idx, e) \) )> l \) ); concat> links;
+      continuations' := <mapconcat(?Continuations(c); !c); map-with-index( (\ (idx, ContinuationAlias(c)) -> <map( (\e -> (<dec>idx, e) \) )> c \) ); concat> continuations;
+      namespaces'    := <mapconcat(?Namespaces(n); !n);    map( (\ NameSpace(ns) -> ns \) )> namespaces;
+      header' :=  DNX_Header(links', continuations', namespaces')
+    
+      
+      
   

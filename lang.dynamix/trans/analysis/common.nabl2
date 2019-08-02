@@ -1,7 +1,7 @@
 module analysis/common
   
 signature
-    namespaces Def Var LinkOrCont Module
+    namespaces Def Var Link Cont Module
     
     sorts Type
     constructors

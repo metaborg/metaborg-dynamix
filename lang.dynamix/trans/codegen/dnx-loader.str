@@ -14,8 +14,8 @@ rules
       <geq> (<length> modules, 0);
       <lookup'> (main_module_name, modules)
     with
-      (_, candl, defs) := <load-module-recursively(|[])> main_module_name;
-      term := NormModule(main_module_name, <dnx-group-candl> candl, <dnx-group-defs> defs) 
+      (_, header, defs) := <load-module-recursively(|[])> main_module_name;
+      term := NormModule(main_module_name, header, <dnx-group-defs> defs) 
      
   dnx-load-compiled-spec: _ -> None()
     where
@@ -32,43 +32,35 @@ rules
     where
       mod := <ReadFromFile> filepath
       
-  load-module-recursively(|map): name -> (newer_map, merged_candl, merged_defs)
+  load-module-recursively(|map): name -> (newer_map, merged_header, merged_defs)
     where
       <not(in-map(|map))> name
     with
-      (imports, candl, defs) := <dnx-get-module-by-name> name;
+      (imports, header, defs) := <dnx-get-module-by-name> name;
       map2 := [name | map];
       to_import := <filter(not(in-map(|map)))> imports;
       
-      (newer_map, new_candl, new_defs) := <foldl(load-module-fold)> (to_import, (map2, [], []));
-      merged_candl := <concat> [candl, new_candl];
+      (newer_map, new_header, new_defs) := <foldl(load-module-fold)> (to_import, (map2, None(), []));
+      merged_header := <merge-header> (header, new_header);
       merged_defs := <concat> [defs, new_defs]
       
-  load-module-recursively(|map): name -> (map, [], [])
+  load-module-recursively(|map): name -> (map, None(), [])
   
   in-map(|map): key -> key where <elem> (key, map) 
   
-  load-module-fold: (name, (map, candl, defs)) -> (map2, <concat> [new_candl, candl], <concat> [new_defs, defs])
+  load-module-fold: (name, (map, header, defs)) -> (map2, <merge-header> (new_header, header), <concat> [new_defs, defs])
     with
-      (map2, new_candl, new_defs) := <load-module-recursively(|map)> name
+      (map2, new_header, new_defs) := <load-module-recursively(|map)> name
 
-  store-module: (name, NormModule(imports, candl, defs)) -> name
+  store-module: (name, NormModule(imports, header, defs)) -> name
     where
-      rules( dnx-get-module-by-name: name -> (imports, candl, defs) )
+      rules( dnx-get-module-by-name: name -> (imports, header, defs) )
       
       
-  dnx-group-candl: defs -> out
-    where
-      (_, out) := <foldl(dnx-group-candl-fold)> (defs, ([], []))
-      
-  dnx-group-candl-fold: (deff, (map, candl)) -> ([name|map], [deff|candl])
-    where
-      name := <get-candl-name> deff;
-      <not(elem)> (name, map)
-  dnx-group-candl-fold: (_, (map, candl)) -> (map, candl)
-  
-  get-candl-name: DNX_Link(name) -> <strip-annos> name
-  get-candl-name: DNX_Cont(name) -> <strip-annos> name
+  merge-header: (None(), e) -> e
+  merge-header: (h@DNX_Header(_, _, _), None()) -> h
+  merge-header: (h1@DNX_Header(_, _, _), h2@DNX_Header(_, _, _)) -> <debug(!"[Dynamix] "); fail> "Cannot merge two headers" 
+  merge-header: e -> <debug; fail> e
   
   dnx-group-defs: defs -> out
     where

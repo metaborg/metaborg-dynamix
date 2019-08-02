@@ -6,6 +6,7 @@ imports
   signatures/Dynamix-sig
   
   fvm-common
+  codegen/dnx-common
 
 rules
   fvm-convert-path: [] -> FVM_Self()
@@ -22,15 +23,10 @@ rules
   dnx-primitive-assign: (var, val) -> ([RGR_Assign(var, val)], None())
   dnx-primitive-int-constant: n -> RGR_IntVal(n)
   dnx-primitive-mk-label: name -> FVM_Label(name)
-  dnx-primitive-mk-header: items -> FVM_Header(<map(dnx-primitive-mk-header-item)> items)
-    with
-      <set-counter> ("link", -1);
-      <set-counter> ("cont", 1)	// Already 2 continuations pre-allocated
+  dnx-primitive-mk-header: DNX_Header(links, continuations, _) -> FVM_Header(<conc> (<map(dnx-primitive-mk-header-link)> links, <map(dnx-primitive-mk-header-cont)> continuations))
       
-  dnx-primitive-mk-header-item: DNX_Link(label) -> FVM_LinkAlias(FVM_Link(label), <int-to-string> <next-counter> "link")
-  dnx-primitive-mk-header-item: DNX_Cont(name@"ret")  -> FVM_ContAlias(FVM_Cont(name), "0")
-  dnx-primitive-mk-header-item: DNX_Cont(name@"exc")  -> FVM_ContAlias(FVM_Cont(name), "1")
-  dnx-primitive-mk-header-item: DNX_Cont(name)  -> FVM_ContAlias(FVM_Cont(name), <int-to-string> <next-counter> "cont")
+  dnx-primitive-mk-header-link: (idx, label) -> FVM_LinkAlias(FVM_Link(label), <int-to-string> idx)
+  dnx-primitive-mk-header-cont: (idx, name)  -> FVM_ContAlias(FVM_Cont(name), <int-to-string> idx)
 
 
 rules // Expressions
