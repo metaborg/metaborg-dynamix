@@ -9,15 +9,15 @@ imports
 rules
 
   init ^ (s) := new s.
-  [[mod@Module(name@"dynamic-semantics", _, _, _, _, DNX_Header([], [_|_], [_|_])) ^(s)]] :=
+  [[mod@Module(name@"dynamic-semantics", _, _, _, _, DNX_Header([], _, _)) ^(s)]] :=
     false | error $[Missing 'link-labels' in signature] @name,
     module[[mod ^(s)]].
 
-  [[mod@Module(name@"dynamic-semantics", _, _, _, _, DNX_Header([_|_], [], [_|_])) ^(s)]] :=
+  [[mod@Module(name@"dynamic-semantics", _, _, _, _, DNX_Header(_, [], _)) ^(s)]] :=
     false | error $[Missing 'continuations' in signature] @name,
     module[[mod ^(s)]].
 
-  [[mod@Module(name@"dynamic-semantics", _, _, _, _, DNX_Header([_|_], [_|_], [])) ^(s)]] :=
+  [[mod@Module(name@"dynamic-semantics", _, _, _, _, DNX_Header(_, _, [])) ^(s)]] :=
     false | error $[Missing 'namespaces' in signature] @name,
     module[[mod ^(s)]].
 
