@@ -60,7 +60,6 @@ rules
   merge-header: (None(), e) -> e
   merge-header: (h@DNX_Header(_, _, _), None()) -> h
   merge-header: (h1@DNX_Header(_, _, _), h2@DNX_Header(_, _, _)) -> <debug(!"[Dynamix] "); fail> "Cannot merge two headers" 
-  merge-header: e -> <debug; fail> e
   
   dnx-group-defs: defs -> out
     where
