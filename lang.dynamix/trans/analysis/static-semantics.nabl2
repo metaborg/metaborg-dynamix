@@ -133,6 +133,14 @@ rules
   term[[DNXTerm_Tuple(elems) ^(s) : TermT()]] :=
     termMap [[elems ^(s) : TermT()]].
     
+  term[[DNXTerm_At(name, pattern) ^(s) : TermT()]] :=
+    Var{name} <- s,
+    Var{name}:TermT()!,
+    term [[pattern ^(s) : TermT()]].
+    
+  term[[DNXTerm_Type(pattern, type) ^(s) : TermT()]] :=
+    term [[pattern ^(s) : TermT()]].
+    
   term[[DNXTerm_ListTail(elems, tail) ^(s) : TermT()]] :=
     termMap [[elems ^(s) : TermT()]],
     term [[tail ^(s) : TermT()]].
@@ -255,6 +263,12 @@ rules
     
   expterm[[DNXTerm_Pat(name, args) ^(s) : TermT()]] :=
     exptermMap [[args ^(s) : TermT()]].
+    
+  expterm[[term@DNXTerm_At(name, pattern) ^(s) : TermT()]] :=
+    false | error $[Unsupported operation] @ term.
+    
+  expterm[[term@DNXTerm_Type(pattern, type) ^(s) : TermT()]] :=
+    false | error $[Unsupported operation] @ term.
     
   expterm[[DNXTerm_Int(_) ^(s) : TermT()]].
     

@@ -2,6 +2,9 @@ module dnx-match
 
 imports
   signatures/Dynamix-sig
+  nabl2/api
+  nabl2/shared/-
+  nabl2/runtime/analysis/-
   
   codegen/dnx-common
   
@@ -13,6 +16,17 @@ rules
       binds := <mapconcat(dnx-match-arg)> zipped
       
   
+  dnx-match-arg: (arg, DNXTerm_At(var, pattern)) -> [(var, arg) | binds]
+    where
+      binds := <dnx-match-arg> (arg, pattern)
+      
+  dnx-match-arg: (arg, DNXTerm_Type(pattern, type)) -> binds
+    where
+      a := <nabl2-get-ast-analysis> arg;
+      arg_type := <nabl2-get-ast-type(|a)> arg;
+      _ := <dnx-match-arg> (arg_type, type);
+      binds := <dnx-match-arg> (arg, pattern)
+      
   dnx-match-arg: (arg, DNXTerm_Pat(p_name, p_args)) -> binds
     where
       (a_name, a_args) := <explode-term> arg;
