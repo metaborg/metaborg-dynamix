@@ -18,6 +18,7 @@ rules
   dnx-primitive-autosize: _ -> FVM_AutoSize()
   dnx-primitive-is-var: RGR_AutoVar(name) -> name
   dnx-primitive-is-label: FVM_AutoLabel(name) -> name
+  dnx-primitive-is-exp: exp -> exp where (name, _) := <explode-term> exp; <string-starts-with(|"RGR_") <+ string-starts-with(|"FVM_") > name  // Technically not correct, but good enough
   dnx-primitive-cont-label: name -> FVM_Cont(name)
   dnx-primitive-link-label: name -> FVM_Link(name)
   dnx-primitive-assign: (var, val) -> ([RGR_Assign(var, val)], None())

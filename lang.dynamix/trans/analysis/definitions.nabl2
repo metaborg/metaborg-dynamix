@@ -19,6 +19,7 @@ rules
     Def{name} : DefT([], [ExpT()], ExpT()) !.
 
   defNames[[ name@"print" ^(s)]] :=
+    false | warning $[You should used printc for printing to the console] @name,
     Def{name} <- s,
     Def{name} : DefT([], [ExpT()], InstrT()) !.
 

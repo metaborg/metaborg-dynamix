@@ -46,6 +46,18 @@ rules
     ; rules( dnx-get-defs-by-name: name -> defs )
     
   dnx-call(|defname, param, properties, blocks): args -> out
+    with
+      out := <dnx-call-(|defname, param, properties, blocks); call-out-to-register> args
+      
+  // If a call returns an expression which is not a register, put it in a register
+  call-out-to-register: e@(instr, None()) -> e
+  call-out-to-register: e@(instr, exp) -> (<conc> (instr, a_instr), new_var) where <not(dnx-primitive-is-var); dnx-primitive-is-exp> exp
+    with
+      new_var := <newname; dnx-primitive-autovar> "exp";
+      (a_instr, None()) := <dnx-primitive-assign> (new_var, exp)
+  call-out-to-register: e -> e
+  
+  dnx-call-(|defname, param, properties, blocks): args -> out
     where
       defs := <dnx-get-defs-by-name> defname
     with
@@ -54,7 +66,7 @@ rules
       out := <dnx-compile-body(|properties, blocks)> bound_body
       
   // Primitive
-  dnx-call(|primname, param, properties, blocks): args -> out
+  dnx-call-(|primname, param, properties, blocks): args -> out
     where
       [] := param
     with
