@@ -62,6 +62,11 @@ rules
         
   dnx-compile-get-out(|defname, ast): Some(a) -> a
   dnx-compile-get-out(|defname, ast): None() -> MatchError(error)
-    where
-      ast' := ast; 
-      error := <debug(!"[Dynamix] ")> ${Could not match the following arguments with the rule {<write-to-string> defname}: {<strip-annos; topdown(try(dnx-primitive-is-var; !Exp())); write-to-string> ast}}
+    where      
+      rule_name_str := <write-to-string> defname;
+      ast_str := <strip-annos; topdown(try(dnx-primitive-is-var; !Exp())); write-to-string> ast;
+      ast_type_str := <map(((\ ast -> type  where 
+      	a := <nabl2-get-ast-analysis> ast;
+      	type := <nabl2-get-ast-type(|a)> ast\
+      ); strip-annos; write-to-string) <+ !"_")> ast;
+      error := <debug(!"[Dynamix] ")> ${Could not match the following arguments with the rule {rule_name_str}: {ast_str}:{ast_type_str}}
