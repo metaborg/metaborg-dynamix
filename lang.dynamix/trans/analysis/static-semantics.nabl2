@@ -6,9 +6,15 @@ imports
   analysis/definitions
   analysis/common
 
-rules
-
-  init ^ (s) := new s.
+rules // Init rule
+  init ^ (s) := new s,
+    TermT()  <sub! TermOrExpT(),
+  	ExpT()   <sub! TermOrExpT(),
+  	ReturnT() <sub! InstrT().
+  
+rules // Module
+  // First check if the signature is correct and in the right file
+  // After that do the actual module
   [[mod@Module(name@"dynamic-semantics", _, _, _, _, DNX_Header([], _, _)) ^(s)]] :=
     false | error $[Missing 'link-labels' in signature] @name,
     module[[mod ^(s)]].
@@ -31,52 +37,27 @@ rules
   [[mod@Module(_, _, _, _, _, _) ^(s)]] :=
     module[[mod ^(s)]].
   
-  module[[Module(name, imports, prim_names, Defs(types), Defs(defs), DNX_Header(links, continuations, namespaces)) ^(s)]] :=
+  module[[Module(name, imports, prim_names, Defs(types), Defs(defs), header) ^(s)]] :=
     new module, module ---> s,
     Module{name} <- s,
-    Module{name} ===> module, 
-    Module{name}.defs := defs,
+    Module{name} ===> module,
     distinct/name D(s)/Module | error $[Multiple modules with name [name]] @NAMES,
     
-    Map1(import) [[imports ^(module)]],
-    initTypes[[ name ^(s)]],
-    Map1(initLinks) [[ links ^(s)]],
-    Map1(initConts) [[ continuations ^(s)]],
-    Map1(defNames) [[prim_names ^(module)]],
-    Map1(typeDecl) [[types ^(module)]],
-    new defs_s, defs_s ---> module,
-    new quotes_s, quotes_s ---> module,
-    Map1(def) [[defs ^(quotes_s, defs_s)]].
-    
-    
-  import [[name ^(s)]] :=
-    Module{name} -> s,
-    Module{name} |-> d | error $[Cannot resolve module '[name]'] @name,
-    Module{name} <=== s.
+    Map1(primNames) [[prim_names ^(s)]],
+    header          [[header ^(s)]],
+    Map1(typeDecl)  [[types ^(s)]],
+//    If we ever fix the issue with imports, we should use this line instead:
+//    Map1(typeDecl)  [[types ^(module)]],
+    Map1(import)    [[imports ^(module)]],
 
-  typeDecl [[TypeDef(name@"eval", paramType, args, ret) ^(s) ]] :=
-    Def{name} <- s,
-    type [[ret ^(s) : retty]],
-    Map1T(type) [[args ^(s) : argty]],
-    Map1T(paramTypeDecl) [[paramType ^(s) : paramty]],
+    new declarations, declarations ---> module,
+    Map1(def) [[defs ^(declarations)]].
     
-    Def{name}:DefT(paramty, argty, retty) | error $[Invalid type for rule eval, should be 'ast -> instr'] @name,
-    Def{name}:DefT([], [TermT()], InstrT()),
-    distinct/name D(s)/Def | error $[Multiple type signatures for rule [name]] @NAMES.
+rules  // Header
+  header [[DNX_Header(links, continuations, namespaces) ^(s)]] := 
+    Map1(initLinks) [[ links ^(s)]],
+    Map1(initConts) [[ continuations ^(s)]].
     
-  typeDecl [[TypeDef(name, paramType, args, ret) ^(s) ]] :=
-    Def{name} <- s,
-    type [[ret ^(s) : retty]],
-    Map1T(type) [[args ^(s) : argty]],
-    Map1T(paramTypeDecl) [[paramType ^(s) : paramty]],
-    Def{name}:DefT(paramty, argty, retty)!,
-    distinct/name D(s)/Def | error $[Multiple type signatures for rule [name]] @NAMES.
-  
-  paramTypeDecl [[ParamType(args, ret) ^(s) : ParamT(argty, retty)]] :=
-    type [[ret ^(s) : retty]],
-    Map1T(type) [[args ^(s) : argty]].
-      
-  
   initLinks [[(idx, lbl) ^(s) ]] :=
     Link{lbl} <- s,
     Link{lbl}: TermT(),
@@ -99,15 +80,50 @@ rules
     Cont{lbl}: TermT(),
     Cont{lbl}.index := idx.
     
-  def[[Def(name, param, args, Block(instrs)) ^(q, s)]] :=
+rules  // Imports
+  import [[name ^(s)]] :=
+    Module{name} -> s,
+    Module{name} |-> d | error $[Cannot resolve module '[name]'] @name.
+//    We dont do the actual import as that results in terribly slow analysis times
+//    Sometimes they just crash with out of memory errors
+//    We should probably think of a fix for this...
+//    (Unwanted behaviour can be observed with the Tiger project)
+//    Module{name} <=== s.
+
+rules // Type declarations
+  typeDecl [[TypeDef(name@"eval", paramType, args, ret) ^(s) ]] :=
+    Def{name} <- s,
+    type [[ret ^(s) : retty]],
+    Map1T(type) [[args ^(s) : argty]],
+    Map1T(paramTypeDecl) [[paramType ^(s) : paramty]],
+    
+    Def{name}:DefT(paramty, argty, retty) | error $[Invalid type for rule eval, should be 'ast -> instr'] @name,
+    Def{name}:DefT([], [TermT()], InstrT()),
+    distinct/name D(s)/Def | error $[Multiple type signatures for rule [name]] @NAMES.
+    
+  typeDecl [[TypeDef(name, paramType, args, ret) ^(s) ]] :=
+    Def{name} <- s,
+    type [[ret ^(s) : retty]],
+    Map1T(type) [[args ^(s) : argty]],
+    Map1T(paramTypeDecl) [[paramType ^(s) : paramty]],
+    Def{name}:DefT(paramty, argty, retty)!,
+    distinct/name D(s)/Def | error $[Multiple type signatures for rule [name]] @NAMES.
+  
+  paramTypeDecl [[ParamType(args, ret) ^(s) : ParamT(argty, retty)]] :=
+    type [[ret ^(s) : retty]],
+    Map1T(type) [[args ^(s) : argty]].
+      
+rules // Definitions   
+  def[[Def(name, param, args, Block(instrs)) ^(s)]] :=
     Def{name} -> s,
     Def{name} |-> d | error $[No type signature for rule [name]],
     d:DefT(dparamty, dtys, drty),
-    new def_s,
-    def_s ---> s,
-    Map1T(defParam) [[param ^(def_s) : paramty]],
-    Map1T(term) [[args ^(def_s) : tys]],
-    Fold3T(instr) [[instrs ^(q, def_s, _) : rty]],
+    new def_q_s, def_q_s ---> s,
+    Map1T(defParam) [[param ^(def_q_s) : paramty]],
+    Map1T(parterm) [[args ^(def_q_s) : tys]],
+    
+    new def_s,   def_s   ---> def_q_s,
+    Fold1TC(instr) [[instrs ^(def_s, def_q_s) : rty]],
     dtys == tys,
     dparamty == paramty,
     rty <sub? drty | error $[Wrong return type. Expected [drty], but got [rty]] @name.
@@ -116,132 +132,56 @@ rules
     Def{name} <- s,
     Def{name}:DefT([], argty, rty)!.
     
+rules // Basic types
   type[[ Term()   ^(s) : TermT()   ]].
   type[[ Code()   ^(s) : CodeT()   ]].
   type[[ Exp()    ^(s) : ExpT()    ]].
   type[[ Instr()  ^(s) : InstrT()  ]].
   type[[ Return() ^(s) : ReturnT() ]].
   
-  
-  term[[DNXTerm_Var(name) ^(s) : ty]] :=
+rules // Parameter terms
+  parterm[[DNXTerm_Var(name) ^(s) : ty]] :=
     Var{name} <- s,
-    Var{name}:ty!.
+    Var{name}:ty!,
+    QVar{name} <- s,
+    QVar{name}:ty!.
     
-  term[[DNXTerm_List(elems) ^(s) : TermT()]] :=
-    termMap [[elems ^(s) : TermT()]].
+  parterm[[DNXTerm_List(elems) ^(s) : TermT()]] :=
+    partermMap [[elems ^(s) : TermT()]].
     
-  term[[DNXTerm_Tuple(elems) ^(s) : TermT()]] :=
-    termMap [[elems ^(s) : TermT()]].
+  parterm[[DNXTerm_Tuple(elems) ^(s) : TermT()]] :=
+    partermMap [[elems ^(s) : TermT()]].
     
-  term[[DNXTerm_At(name, pattern) ^(s) : TermT()]] :=
+  parterm[[DNXTerm_At(name, pattern) ^(s) : TermT()]] :=
     Var{name} <- s,
     Var{name}:TermT()!,
-    term [[pattern ^(s) : TermT()]].
+    parterm [[pattern ^(s) : TermT()]].
     
-  term[[DNXTerm_Type(pattern, type) ^(s) : TermT()]] :=
-    term [[pattern ^(s) : TermT()]].
+  parterm[[DNXTerm_Type(pattern, type) ^(s) : TermT()]] :=
+    parterm [[pattern ^(s) : TermT()]].
     
-  term[[DNXTerm_ListTail(elems, tail) ^(s) : TermT()]] :=
-    termMap [[elems ^(s) : TermT()]],
-    term [[tail ^(s) : TermT()]].
+  parterm[[DNXTerm_ListTail(elems, tail) ^(s) : TermT()]] :=
+    partermMap [[elems ^(s) : TermT()]],
+    parterm [[tail ^(s) : TermT()]].
     
-  term[[DNXTerm_ListLast(init, last) ^(s) : TermT()]] :=
-    termMap [[last ^(s) : TermT()]],
-    term [[init ^(s) : TermT()]].
+  parterm[[DNXTerm_ListLast(init, last) ^(s) : TermT()]] :=
+    partermMap [[last ^(s) : TermT()]],
+    parterm [[init ^(s) : TermT()]].
     
-  term[[DNXTerm_Pat(name, args) ^(s) : TermT()]] :=
-    termMap [[args ^(s) : TermT()]].
+  parterm[[DNXTerm_Pat(name, args) ^(s) : TermT()]] :=
+    partermMap [[args ^(s) : TermT()]].
     
-  term[[DNXTerm_Int(_) ^(s) : TermT()]].
+  parterm[[DNXTerm_Int(_) ^(s) : TermT()]].
     
-  term[[DNXTerm_String(_) ^(s) : TermT()]].
-  term[[DNX_Link(_) ^(s) : TermT()]].
-  term[[DNX_Cont(_) ^(s) : TermT()]].
+  parterm[[DNXTerm_String(_) ^(s) : TermT()]].
+  parterm[[DNX_Link(_) ^(s) : TermT()]].
+  parterm[[DNX_Cont(_) ^(s) : TermT()]].
   
-  termMap [[ [] ^(s) : ty ]].
-  termMap [[ [h|t] ^(s) : ty ]] :=
-    term [[h ^(s) : ty]], termMap [[t ^(s) : ty ]].
+  partermMap [[ [] ^(s) : ty ]].
+  partermMap [[ [h|t] ^(s) : ty ]] :=
+    parterm [[h ^(s) : ty]], partermMap [[t ^(s) : ty ]].
   
-  Fold3T(X) [[ [DNX_Return(arg)] ^(q, s, qp) : ExpT() ]] :=
-    rty == ExpT() | error $[A value of type [rty] cannot be returned by a definition],
-    exp [[arg ^(q, s, qp) : rty]].
-    
-  Fold3T(X) [[ [DNX_Return(arg) | tail] ^(q, s, qp) : ExpT() ]] :=
-    rty == ExpT() | error $[A value of type [rty] cannot be returned by a definition],
-    exp [[arg ^(q, s, qp) : rty]],
-    Fold3T(instr) [[tail ^(q, s, qp) : _]],
-    false | error $[Dead code] @tail.
-    
-  Fold3T(X) [[ [h] ^(a, b, c) : ty ]] :=
-    X[[ h ^(a, b, c, _, _, _) : ty]].
-    
-  Fold3T(X) [[ [h | t] ^(a, b, c) : ty ]] :=
-    X[[ h ^(a, b, c, a', b', c') : _ ]],
-    Fold3T(X)[[ t ^(a', b', c') : ty ]].
-  
-  
-  instr [[ DNX_Bind(name, exp) ^(q, s, qp, q', def_s, qp') : InstrT() ]] :=
-    q == q', qp == qp', 
-    exp [[exp ^(q, s, qp) : expty]],
-    new def_s,
-    def_s ---> s,
-    Var{name} <- def_s,
-    Var{name}:expty!.
-    
-  instr [[ DNX_Exp(exp) ^(q, s, qp, q', s', qp') : defrty ]] :=
-    q == q', s == s', qp == qp', 
-    exp[[exp ^(q, s, qp) : defrty]].
-    
-  instr [[ DNX_Label(_) ^(q, s, qp, q', s', qp') : InstrT() ]] :=
-    q == q', s == s', qp == qp'.
-  
-  exp [[DNX_Link(lbl) ^(q, s, qp) : ty ]] :=
-    Link{lbl} -> s,
-    Link{lbl} |-> d | error $[Link with label [lbl] is not defined],
-    d : ty.
-  
-  exp [[DNX_Cont(lbl) ^(q, s, qp) : ty ]] :=
-    Cont{lbl} -> s,
-    Cont{lbl} |-> d | error $[Continuation with label [lbl] is not defined],
-    d : ty.
-    
-  exp [[DNX_Label(_) ^(q, s, qp) : CodeT() ]]. // TODO: Check if these resolve in the current rule
-  
-  exp [[DNX_Var(name) ^(q, s, qp) : ty ]] :=
-    Var{name} -> s,
-    Var{name} |-> d | error $[Variable [name] not declared] @name,
-    d:ty.
-    
-  exp [[DNX_Call(name, param, args) ^(q, s, qp) : rty ]] :=
-    Def{name} -> s,
-    Def{name} |-> d | error $[Rule [name] not declared] @name,
-    d:DefT(dparamty, defargtys, defrty)!,
-    Map3T(exp) [[args ^(q, s, qp) : argtys]],
-    Map1T(expParam) [[param ^(s) : paramty]],
-    rty == defrty,
-    paramty == dparamty,
-    argtys <sub? defargtys | error $[Wrong argument type. Expected [defargtys], found [argtys]].
-     
-  expParam [[name ^(s) : ParamT(argty, retty) ]] :=
-    Def{name} -> s,
-    Def{name} |-> d | error $[Rule [name] not defined],
-    d:DefT(dparamty, dargty, dretty),
-    dparamty == [] | error $[Nesting parameterized rules is not allowed],
-    argty == dargty, retty == dretty.
-  
-  exp [[DNX_Quote(Block(instrs)) ^(q, s, qp) : CodeT()]] :=
-    new quote_s, quote_s ---> q,
-    qty <sub? InstrT() | error $[Found [qty], expected [InstrT()]],
-    Fold3T(instr) [[instrs ^(q, quote_s, s) : qty]].
-    
-  exp [[DNX_Splice(DNX_Var(name)) ^(q, s, qp) : ty ]] :=
-    Var{name} -> qp,
-    Var{name} |-> d | error $[Variable [name] not declared] @name,
-    d:sty,
-    ty == sty.
-    
-  exp [[DNX_Term(term) ^(q, s, qp) : ty ]] := expterm [[term ^(s) : ty]].
-  
+rules // Expression terms
   expterm[[DNXTerm_Var(name) ^(s) : ty]] :=
     Var{name} -> s,
     Var{name} |-> d | error $[Variable [name] not defined] @name,
@@ -281,3 +221,87 @@ rules
     expterm [[h ^(s) : ty]], exptermMap [[t ^(s) : ty ]].
   
     
+
+rules // Instructions
+  Fold1TC(X) [[ [DNX_Return(arg)] ^(s, p) : ExpT() ]] :=
+    rty == ExpT() | error $[A value of type [rty] cannot be returned by a definition],
+    exp [[arg ^(s, p) : rty]].
+    
+  Fold1TC(X) [[ [DNX_Return(arg) | tail] ^(s, p) : ExpT() ]] :=
+    rty == ExpT() | error $[A value of type [rty] cannot be returned by a definition],
+    exp [[arg ^(s, p) : rty]],
+    Fold1TC(instr) [[tail ^(s, p) : _]],
+    false | error $[Dead code] @tail.
+    
+  Fold1TC(X) [[ [h] ^(s, p) : ty ]] :=
+    X[[ h ^(s, _, p) : ty]].
+    
+  Fold1TC(X) [[ [h | t] ^(s, p) : ty ]] :=
+    X[[ h ^(s, s', p) : _ ]],
+    Fold1TC(X)[[ t ^(s', p) : ty ]].
+  
+  
+  instr [[ DNX_Bind(name, exp) ^(s, def_s, p) : InstrT() ]] :=
+    exp [[exp ^(s, p) : expty]],
+    new def_s,
+    def_s ---> s,
+    Var{name} <- def_s,
+    Var{name}:expty!.
+    
+  instr [[ DNX_Exp(exp) ^(s, s', p) : defrty ]] :=
+    s == s', 
+    exp[[exp ^(s, p) : defrty]].
+    
+  instr [[ DNX_Label(_) ^(s, s', _) : InstrT() ]] :=
+    s == s'.
+    
+rules // Expressions  
+  exp [[DNX_Link(lbl) ^(s, _) : ty ]] :=
+    Link{lbl} -> s,
+    Link{lbl} |-> d | error $[Link with label [lbl] is not defined],
+    d : ty.
+  
+  exp [[DNX_Cont(lbl) ^(s, _) : ty ]] :=
+    Cont{lbl} -> s,
+    Cont{lbl} |-> d | error $[Continuation with label [lbl] is not defined],
+    d : ty.
+    
+  exp [[DNX_Label(_) ^(s, _) : CodeT() ]]. // TODO: Check if these resolve in the current rule
+  
+  exp [[DNX_Var(name) ^(s, _) : ty ]] :=
+    Var{name} -> s,
+    Var{name} |-> d | error $[Variable [name] not declared] @name,
+    d:ty.
+    
+  exp [[DNX_Call(name, param, args) ^(s, p) : rty ]] :=
+    Def{name} -> s,
+    Def{name} |-> d | error $[Rule [name] not declared] @name,
+    d:DefT(dparamty, defargtys, defrty)!,
+    Map2T(exp) [[args ^(s, p) : argtys]],
+    Map1T(expParam) [[param ^(s) : paramty]],
+    rty == defrty,
+    paramty == dparamty,
+    argtys <sub? defargtys | error $[Wrong argument type. Expected [defargtys], found [argtys]].
+     
+  exp [[DNX_Quote(Block(instrs)) ^(s, p) : CodeT()]] :=
+    new quote_s, quote_s ---> p,
+    qty <sub? InstrT() | error $[Found [qty], expected [InstrT()]],
+    Fold1TC(instr) [[instrs ^(quote_s, quote_s) : qty]].
+    
+  exp [[DNX_Splice(DNX_Var(name)) ^(s, _) : ty ]] :=
+    QVar{name} -> s,
+    QVar{name} |-> d | error $[Variable [name] not declared] @name,
+    d:sty,
+    ty == sty.
+    
+  exp [[DNX_Term(term) ^(s, _) : ty ]] := expterm [[term ^(s) : ty]].
+  
+  expParam [[name ^(s) : ParamT(argty, retty) ]] :=
+    Def{name} -> s,
+    Def{name} |-> d | error $[Rule [name] not defined],
+    d:DefT(dparamty, dargty, dretty),
+    dparamty == [] | error $[Nesting parameterized rules is not allowed],
+    argty == dargty, retty == dretty.
+  
+  
+  

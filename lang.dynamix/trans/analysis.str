@@ -47,10 +47,23 @@ rules
       def_decls  := <filter(?Def(_, _, _, _))> all_defs;
       type_decls := <filter(?TypeDef(_, _, _, _))> all_defs
   
-  collect-prim-names: Module(name, imports, _, types, defs, candl) -> Module(name, imports, prim_names, types, defs, candl)
+  collect-prim-names: Module(name@"dynamic-semantics", imports, _, types, defs, candl) -> Module(name, imports, prim_names, types, defs, candl)
     where
-      prim_names := <collect-all((\DNX_CallPrim(name, param, args) -> name\))>
+      prim_names := [
+      		"jump", "empty", "push", "pop", "print", "printc", "jumpz", 
+      		"callCF", "returnCF", "curCF", "newCF", "getCF", "setCF", "unpackCF", 
+      		"int", "char", 
+      		"ineg", "iadd", "imul", "isub", "idiv", "imod", "ieq", "ilt", "igt", "ior", "iand", "ixor", 
+      		"is-int", "is-frame", "is-closure", "is-continuation", 
+      		"mk-closure", "closure-to-CF", 
+      		"new", "size", "link", "set", "mkcur", "cur", "get", "is-empty", 
+      		"resolve", "resolve-label", "resolve-scope", 
+      		"continue", "length", "zip-with-index", 
+      		"associate-index", "associate-label"
+      ]
       
+  collect-prim-names: Module(name, imports, _, types, defs, candl) -> Module(name, imports, [], types, defs, candl)
+    
   remove-prim-calls = topdown(try((\DNX_CallPrim(name, param, args) -> DNX_Call(name, param, args)\)))
   
   build-header: Module(name, imports, primitives, types, defs, header_elems) -> Module(name, imports', primitives, types, defs, header')

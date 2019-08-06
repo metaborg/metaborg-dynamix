@@ -1,7 +1,7 @@
 module analysis/common
   
 signature
-    namespaces Def Var Link Cont Module
+    namespaces Def Var QVar Link Cont Module
     
     sorts Type
     constructors
@@ -22,8 +22,13 @@ signature
       [+sub]
      }
      
-rules
-  initTypes [[ _ ^(_) ]] :=
-  	TermT()  <sub! TermOrExpT(),
-  	ExpT()   <sub! TermOrExpT(),
-  	ReturnT() <sub! InstrT().
+name resolution
+  labels
+    P I
+  order
+    D < P,
+    D < I,
+    I < P
+
+  well-formedness
+    P* I*

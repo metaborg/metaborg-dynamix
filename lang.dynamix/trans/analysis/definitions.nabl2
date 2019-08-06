@@ -6,32 +6,32 @@ imports
 
 rules
 
-  defNames[[ name@"empty" ^(s)]] :=
+  primNames[[ name@"empty" ^(s)]] :=
     Def{name} <- s,
     Def{name} : DefT([], [TermT(), ExpT()], InstrT()) !.
 
-  defNames[[ name@"push" ^(s)]] :=
+  primNames[[ name@"push" ^(s)]] :=
     Def{name} <- s,
     Def{name} : DefT([], [ExpT(), ExpT()], InstrT()) !.
   
-  defNames[[ name@"pop" ^(s)]] :=
+  primNames[[ name@"pop" ^(s)]] :=
     Def{name} <- s,
     Def{name} : DefT([], [ExpT()], ExpT()) !.
 
-  defNames[[ name@"print" ^(s)]] :=
+  primNames[[ name@"print" ^(s)]] :=
     false | warning $[You should used printc for printing to the console] @name,
     Def{name} <- s,
     Def{name} : DefT([], [ExpT()], InstrT()) !.
 
-  defNames[[ name@"printc" ^(s)]] :=
+  primNames[[ name@"printc" ^(s)]] :=
     Def{name} <- s,
     Def{name} : DefT([], [ExpT()], InstrT()) !.
 
-   defNames[[ name@"jump" ^(s)]] :=
+   primNames[[ name@"jump" ^(s)]] :=
     Def{name} <- s,
     Def{name} : DefT([], [CodeT()], InstrT()).
     
-  defNames[[ name@"jumpz" ^(s)]] :=
+  primNames[[ name@"jumpz" ^(s)]] :=
     Def{name} <- s,
     Def{name} : DefT([], [ExpT(), CodeT(), CodeT()], InstrT()).
 //    then <sub? CodeT(),
@@ -39,178 +39,178 @@ rules
     // m == then meet else, m != CodeT()
     // out_mult is mulOrd.lub of (e1_mult,e2_mult),
 
-  defNames[[ name@"callCF" ^(s)]] :=
+  primNames[[ name@"callCF" ^(s)]] :=
     Def{name} <- s,
     Def{name} : DefT([], [ExpT()], InstrT()) !.
 
-  defNames[[ name@"returnCF" ^(s)]] :=
+  primNames[[ name@"returnCF" ^(s)]] :=
     Def{name} <- s,
     Def{name} : DefT([], [ExpT()], ReturnT()) !.
 
-  defNames[[ name@"curCF" ^(s)]] :=
+  primNames[[ name@"curCF" ^(s)]] :=
     Def{name} <- s,
     Def{name} : DefT([], [], ExpT()) !.
 
-  defNames[[ name@"newCF" ^(s)]] :=
+  primNames[[ name@"newCF" ^(s)]] :=
     Def{name} <- s,
     Def{name} : DefT([], [ExpT(), CodeT(), ExpT()], ExpT()) !.
 
-  defNames[[ name@"getCF" ^(s)]] :=
+  primNames[[ name@"getCF" ^(s)]] :=
     Def{name} <- s,
     Def{name} : DefT([], [ExpT(), TermT()], ExpT()) !.
 
-  defNames[[ name@"setCF" ^(s)]] :=
+  primNames[[ name@"setCF" ^(s)]] :=
     Def{name} <- s,
     Def{name} : DefT([], [ExpT(), TermT(), ExpT()], InstrT()) !.
 
-  defNames[[ name@"unpackCF" ^(s)]] :=
+  primNames[[ name@"unpackCF" ^(s)]] :=
     Def{name} <- s,
     Def{name} : DefT([], [ExpT()], ExpT()) !.
 
 
-  defNames[[ name@"int" ^(s)]] :=
+  primNames[[ name@"int" ^(s)]] :=
     Def{name} <- s,
     Def{name} : DefT([], [TermT()], ExpT()) !.
 
-  defNames[[ name@"char" ^(s)]] :=
+  primNames[[ name@"char" ^(s)]] :=
     Def{name} <- s,
     Def{name} : DefT([], [TermT()], ExpT()) !.
 
-  defNames[[ name@"ineg" ^(s)]] :=
+  primNames[[ name@"ineg" ^(s)]] :=
     Def{name} <- s,
     Def{name} : DefT([], [ExpT()], ExpT()) !.
 
-  defNames[[ name@"iadd" ^(s)]] :=
+  primNames[[ name@"iadd" ^(s)]] :=
     Def{name} <- s,
     Def{name} : DefT([], [ExpT(), ExpT()], ExpT()) !.
 
-  defNames[[ name@"imul" ^(s)]] :=
+  primNames[[ name@"imul" ^(s)]] :=
     Def{name} <- s,
     Def{name} : DefT([], [ExpT(), ExpT()], ExpT()) !.
 
-  defNames[[ name@"isub" ^(s)]] :=
+  primNames[[ name@"isub" ^(s)]] :=
     Def{name} <- s,
     Def{name} : DefT([], [ExpT(), ExpT()], ExpT()) !.
 
-  defNames[[ name@"idiv" ^(s)]] :=
+  primNames[[ name@"idiv" ^(s)]] :=
     Def{name} <- s,
     Def{name} : DefT([], [ExpT(), ExpT()], ExpT()) !.
 
-  defNames[[ name@"imod" ^(s)]] :=
+  primNames[[ name@"imod" ^(s)]] :=
     Def{name} <- s,
     Def{name} : DefT([], [ExpT(), ExpT()], ExpT()) !.
 
-  defNames[[ name@"ieq" ^(s)]] :=
+  primNames[[ name@"ieq" ^(s)]] :=
     Def{name} <- s,
     Def{name} : DefT([], [ExpT(), ExpT()], ExpT()) !.
 
-  defNames[[ name@"ilt" ^(s)]] :=
+  primNames[[ name@"ilt" ^(s)]] :=
     Def{name} <- s,
     Def{name} : DefT([], [ExpT(), ExpT()], ExpT()) !.
 
-  defNames[[ name@"igt" ^(s)]] :=
+  primNames[[ name@"igt" ^(s)]] :=
     Def{name} <- s,
     Def{name} : DefT([], [ExpT(), ExpT()], ExpT()) !.
 
-  defNames[[ name@"ior" ^(s)]] :=
+  primNames[[ name@"ior" ^(s)]] :=
     Def{name} <- s,
     Def{name} : DefT([], [ExpT(), ExpT()], ExpT()) !.
 
-  defNames[[ name@"iand" ^(s)]] :=
+  primNames[[ name@"iand" ^(s)]] :=
     Def{name} <- s,
     Def{name} : DefT([], [ExpT(), ExpT()], ExpT()) !.
 
-  defNames[[ name@"ixor" ^(s)]] :=
+  primNames[[ name@"ixor" ^(s)]] :=
     Def{name} <- s,
     Def{name} : DefT([], [ExpT(), ExpT()], ExpT()) !.
 
 
-  defNames[[ name@"is-int" ^(s)]] :=
+  primNames[[ name@"is-int" ^(s)]] :=
     Def{name} <- s,
     Def{name} : DefT([], [ExpT()], ExpT()) !.
 
-  defNames[[ name@"is-frame" ^(s)]] :=
+  primNames[[ name@"is-frame" ^(s)]] :=
     Def{name} <- s,
     Def{name} : DefT([], [ExpT()], ExpT()) !.
 
-  defNames[[ name@"is-closure" ^(s)]] :=
+  primNames[[ name@"is-closure" ^(s)]] :=
     Def{name} <- s,
     Def{name} : DefT([], [ExpT()], ExpT()) !.
 
-  defNames[[ name@"is-continuation" ^(s)]] :=
+  primNames[[ name@"is-continuation" ^(s)]] :=
     Def{name} <- s,
     Def{name} : DefT([], [ExpT()], ExpT()) !.
 
 
-  defNames[[ name@"new" ^(s)]] :=
+  primNames[[ name@"new" ^(s)]] :=
     Def{name} <- s,
     Def{name} : DefT([], [ExpT()], ExpT()) !.
 
-  defNames[[ name@"size" ^(s)]] :=
+  primNames[[ name@"size" ^(s)]] :=
     Def{name} <- s,
     Def{name} : DefT([], [ExpT()], ExpT()) !.
 
-  defNames[[ name@"link" ^(s)]] :=
+  primNames[[ name@"link" ^(s)]] :=
     Def{name} <- s,
     Def{name} : DefT([], [ExpT(), TermOrExpT(), TermT()], InstrT()) !.
 
-  defNames[[ name@"set" ^(s)]] :=
+  primNames[[ name@"set" ^(s)]] :=
     Def{name} <- s,
     Def{name} : DefT([], [ExpT(), TermOrExpT(), ExpT()], InstrT()) !.
 
-  defNames[[ name@"mkcur" ^(s)]] :=
+  primNames[[ name@"mkcur" ^(s)]] :=
     Def{name} <- s,
     Def{name} : DefT([], [ExpT()], InstrT()) !.
 
-  defNames[[ name@"cur" ^(s)]] :=
+  primNames[[ name@"cur" ^(s)]] :=
     Def{name} <- s,
     Def{name} : DefT([], [], ExpT()) !.
 
-  defNames[[ name@"get" ^(s)]] :=
+  primNames[[ name@"get" ^(s)]] :=
     Def{name} <- s,
     Def{name} : DefT([], [ExpT(), TermOrExpT()], ExpT()) !.
 
-  defNames[[ name@"is-empty" ^(s)]] :=
+  primNames[[ name@"is-empty" ^(s)]] :=
     Def{name} <- s,
     Def{name} : DefT([], [ExpT(), TermT()], ExpT()) !.
 
-  defNames[[ name@"resolve" ^(s)]] :=
+  primNames[[ name@"resolve" ^(s)]] :=
     Def{name} <- s,
     Def{name} : DefT([], [TermT(), TermT()], TermT()) !.
 
-  defNames[[ name@"resolve-scope" ^(s)]] :=
+  primNames[[ name@"resolve-scope" ^(s)]] :=
     Def{name} <- s,
     Def{name} : DefT([], [TermT(), TermT()], TermT()) !.
 
-  defNames[[ name@"resolve-label" ^(s)]] :=
+  primNames[[ name@"resolve-label" ^(s)]] :=
     Def{name} <- s,
     Def{name} : DefT([], [TermT(), TermT()], CodeT()) !.
     
-  defNames[[ name@"length" ^(s)]] :=
+  primNames[[ name@"length" ^(s)]] :=
     Def{name} <- s,
     Def{name} : DefT([], [TermT()], TermT()) !.
     
-  defNames[[ name@"zip-with-index" ^(s)]] :=
+  primNames[[ name@"zip-with-index" ^(s)]] :=
     Def{name} <- s,
     Def{name} : DefT([], [TermT()], TermT()) !.
     
-  defNames[[ name@"associate-index" ^(s)]] :=
+  primNames[[ name@"associate-index" ^(s)]] :=
     Def{name} <- s,
     Def{name} : DefT([], [TermT(), TermT(), TermT()], InstrT()) !.
     
-  defNames[[ name@"associate-label" ^(s)]] :=
+  primNames[[ name@"associate-label" ^(s)]] :=
     Def{name} <- s,
     Def{name} : DefT([], [CodeT(), TermT(), TermT()], InstrT()) !.
     
-  defNames[[ name@"continue" ^(s)]] :=
+  primNames[[ name@"continue" ^(s)]] :=
     Def{name} <- s,
     Def{name} : DefT([], [], InstrT()) !.
     
-  defNames[[ name@"mk-closure" ^(s)]] :=
+  primNames[[ name@"mk-closure" ^(s)]] :=
     Def{name} <- s,
     Def{name} : DefT([], [ExpT(), CodeT(), ExpT()], ExpT()) !.
     
-  defNames[[ name@"closure-to-CF" ^(s)]] :=
+  primNames[[ name@"closure-to-CF" ^(s)]] :=
     Def{name} <- s,
     Def{name} : DefT([], [ExpT()], ExpT()) !.
     
