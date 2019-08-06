@@ -13,12 +13,25 @@ imports
 rules
   dnx-on-save:
     (_, _, ast@Module(name, _, _, _, _, _), path, project-path) -> (full_name, result)
+    where
+      <nabl2-get-ast-analysis; not(nabl2-analysis-has-errors)> ast
     with
       filename := $[src-gen/dynamix/[name].dnxc]
     ; full_name := $[[project-path]/[filename]]
     ; result   := <compile-dnx-spec> ast
     ; dnx-log(|"INFO", $<Writing compiled Dynamix spec to '<filename>'>)
     
+  dnx-on-save:
+    (_, _, ast@Module(name, _, _, _, _, _), path, project-path) -> (full_name, old)
+   with
+      filename := $[src-gen/dynamix/[name].dnxc]
+    ; full_name := $[[project-path]/[filename]]
+    ; old := <get-previous-dnx-spec> full_name
+    ; dnx-log(|"INFO", $<Skipping compilation of '<filename>' as it has errors>)
+    
+rules
+  get-previous-dnx-spec: file -> <ReadFromFile> file
+  
 rules      
   compile-dnx-spec: Module(_,imports,_, Defs(types), Defs(defs), header) -> out 
     with
