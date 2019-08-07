@@ -44,7 +44,8 @@ rules
   dnx-match-arg: (arg, DNXTerm_String(string)) -> []
     where
       <is-string> arg;
-      <equal> (<strip-annos> arg, <unquote(!"\"")> string)
+      <equal> (<strip-annos> arg, string)
+
 //  dnx-match-arg: (arg, DNXTerm_Int(val)) -> []
 //    where
 //      <is-int> arg;

@@ -10,9 +10,11 @@ imports
   codegen/dnx-common
   
 rules // Analysis
-  desugar = collect-def-types; collect-prim-names; remove-prim-calls; desugar-call-params-all; build-header
+  desugar = collect-def-types; collect-prim-names; desugar-all; build-header
   editor-analyze = nabl2-analyze(desugar)
 
+  
+  desugar-all = topdown(try(desugar-term))
 rules // Debugging
   // Prints the abstract syntax ATerm of a selection.
   debug-show-aterm: (selected, _, _, path, project-path) -> (filename, result)
@@ -29,16 +31,15 @@ rules // Debugging
        ; result   := selected
 
 rules
-  desugar-call-params-all: mod -> <topdown(try(desugar-call-params))> mod
   
-  desugar-call-params: Def(name, None(), args, body) -> Def(name, [], args, body)
-  desugar-call-params: Def(name, Some(Param(params)), args, body) -> Def(name, params, args, body)
+  desugar-term: Def(name, None(), args, body) -> Def(name, [], args, body)
+  desugar-term: Def(name, Some(Param(params)), args, body) -> Def(name, params, args, body)
   
-  desugar-call-params: DNX_Call(name, None(), args) -> DNX_Call(name, [], args)
-  desugar-call-params: DNX_Call(name, Some(Param(params)), args) -> DNX_Call(name, params, args)
+  desugar-term: DNX_Call(name, None(), args) -> DNX_Call(name, [], args)
+  desugar-term: DNX_Call(name, Some(Param(params)), args) -> DNX_Call(name, params, args)
   
-  desugar-call-params: TypeDef(name, None(), argsty, retty) -> TypeDef(name, [], argsty, retty)
-  desugar-call-params: TypeDef(name, Some(ParamTypeList(params)), argsty, retty) -> TypeDef(name, params, argsty, retty)
+  desugar-term: TypeDef(name, None(), argsty, retty) -> TypeDef(name, [], argsty, retty)
+  desugar-term: TypeDef(name, Some(ParamTypeList(params)), argsty, retty) -> TypeDef(name, params, argsty, retty)
   
   collect-def-types: Module(name, definitions) -> Module(name, imports, [], Defs(type_decls), Defs(def_decls), header)
     where
@@ -64,8 +65,11 @@ rules
       
   collect-prim-names: Module(name, imports, _, types, defs, candl) -> Module(name, imports, [], types, defs, candl)
     
-  remove-prim-calls = topdown(try((\DNX_CallPrim(name, param, args) -> DNX_Call(name, param, args)\)))
-  
+  desugar-term: DNX_CallPrim(name, param, args) -> <desugar-term> DNX_Call(name, param, args)
+  desugar-term: DNXTerm_String(string) -> DNXTerm_String(<unquote(id); unescape> string)
+  un-escape = string-replace(|"\\\\", "\\")//; string-replace(|"\\n", "\n"); string-replace(|"\\t", "\t"); string-replace(|"\\'", "'"); string-replace(|"\\\"", "\"")
+    
+    
   build-header: Module(name, imports, primitives, types, defs, header_elems) -> Module(name, imports', primitives, types, defs, header')
     where
       headers := <mapconcat(?Header(a); !a)> header_elems;
