@@ -16,7 +16,7 @@ rules
       binds := <mapconcat(dnx-match-arg)> zipped
       
   
-  dnx-match-arg: (arg, DNXTerm_At(var, pattern)) -> [(var, arg) | binds]
+  dnx-match-arg: (arg, DNXTerm_At(DNXTerm_Var(var), pattern)) -> [(var, arg) | binds]
     where
       binds := <dnx-match-arg> (arg, pattern)
       

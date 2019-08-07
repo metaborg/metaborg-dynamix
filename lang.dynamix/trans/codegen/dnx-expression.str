@@ -82,9 +82,9 @@ rules
   dnx-compile-term: var@RGR_AutoVar(_) -> var
   dnx-compile-term: DNX_Cont(name) -> <dnx-primitive-cont-label> name
   dnx-compile-term: DNX_Link(name) -> <dnx-primitive-link-label> name
-  
+  dnx-compile-term: DNXTerm_At(term, var) -> <dnx-compile-term; nabl2-copy-ast-index(|var)> term
  
-  dnx-compile-term: e -> e
+  dnx-compile-term: e -> e where <get-constructor; not(string-starts-with(|"DNXTerm_"))> e
   
 
   

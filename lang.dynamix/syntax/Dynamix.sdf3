@@ -67,7 +67,7 @@ context-free syntax
  Pattern = Link
  Pattern = Cont
  
- Pattern.DNXTerm_At = <<ID>@<Pattern>>
+ Pattern.DNXTerm_At = <<Pattern>@<Pattern>>
  Pattern.DNXTerm_Type = <<Pattern>:<Pattern>>
  Pattern.DNXTerm_Var = <<ID>>
  Pattern.DNXTerm_Int = INT

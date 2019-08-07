@@ -152,11 +152,14 @@ rules // Parameter terms
   parterm[[DNXTerm_Tuple(elems) ^(s) : TermT()]] :=
     partermMap [[elems ^(s) : TermT()]].
     
-  parterm[[DNXTerm_At(name, pattern) ^(s) : TermT()]] :=
+  parterm[[DNXTerm_At(DNXTerm_Var(name), pattern) ^(s) : TermT()]] :=
     Var{name} <- s,
     Var{name}:TermT()!,
     parterm [[pattern ^(s) : TermT()]].
     
+  parterm[[term@DNXTerm_At(name, pattern) ^(s) : TermT()]] :=
+    false | error $[[name] must be a variable] @term.
+     
   parterm[[DNXTerm_Type(pattern, type) ^(s) : TermT()]] :=
     parterm [[pattern ^(s) : TermT()]].
     
@@ -203,9 +206,13 @@ rules // Expression terms
     
   expterm[[DNXTerm_Pat(name, args) ^(s) : TermT()]] :=
     exptermMap [[args ^(s) : TermT()]].
+  
+  expterm[[term@DNXTerm_At(pattern, DNXTerm_Var(name)) ^(s) : TermT()]] :=
+    Var{name} -> s,
+    Var{name} |-> d | error $[Variable [name] not defined] @name.
     
-  expterm[[term@DNXTerm_At(name, pattern) ^(s) : TermT()]] :=
-    false | error $[Unsupported operation] @ term.
+  expterm[[term@DNXTerm_At(pattern, var) ^(s) : TermT()]] :=
+    false | error $[[var] must be a variable] @ term.
     
   expterm[[term@DNXTerm_Type(pattern, type) ^(s) : TermT()]] :=
     false | error $[Unsupported operation] @ term.

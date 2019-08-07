@@ -11,8 +11,18 @@ imports
 
   
 rules
-   dnx-primitive-call(|p): ("resolve", [name, ns]) -> ([], <dnx-resolve-name(|ns, p)> name)	// TODO: Correct ordering of slots in scopes (First referenced gets first slot maybe?)
-   dnx-primitive-call(|p): ("resolve-scope", [name, ns]) -> ([], <dnx-resolve-name(|ns, p); split-init-last; Fst> name)
+   dnx-primitive-call(|p): ("resolve", [name, ns]) -> ([], path) where path := <dnx-resolve-name(|ns, p)> name
+   dnx-primitive-call(|p): ("resolve", [name, ns]) -> <debug(!"[Dynamix] "); fail> $[Cannot resolve [<strip-annos; write-to-string> name] in namespace [<strip-annos; write-to-string> ns]]
+   
+   dnx-primitive-call(|p): ("resolve-scope", [name, ns]) -> ([], path) 
+      with
+        a       := <nabl2-get-ast-analysis> name;
+        ref-occ := <nabl2-mk-occurrence(|ns)> name;
+        (sg_path, _) := <nabl2-get-resolved-name(|a)> ref-occ
+      with
+        path := <(is-list <+ ![]); map(dnx-from-nabl2-path)> sg_path
+        
+   dnx-primitive-call(|p): ("resolve-scope", [name, ns]) -> <debug(!"[Dynamix] "); fail> $[Cannot resolve the scope of [<strip-annos; write-to-string> name] in namespace [<strip-annos; write-to-string> ns]]
    
    dnx-primitive-call(|p): ("length", [list]) -> ([], res) where <is-list> list
      with
