@@ -13,6 +13,7 @@ signature
     DefCase: [Pattern] * [STRING] * [instruction] -> S
     DNX_BindExp: [STRING] * [Exp] -> S
     MatchError: STRING -> S
+    DNX_Error: STRING -> S
 
      
 rules

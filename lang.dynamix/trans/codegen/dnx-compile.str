@@ -27,7 +27,11 @@ rules
       body2 := <conc> (instr, blocks_instr);
       body3 := <foldl(replace-tmp-labels)> (tmp_labels, body2); 
       out := <dnx-mk-final-output> (compiled_header, body3, err)
-      
+  
+  dnx-compile: (_, None()) -> DNX_Error(error)
+    where
+      error := <debug(!"[Dynamix] ")> "No Dynamix specification loaded! Compiling failed"
+  
   replace-tmp-labels: ((key, val), body) -> <topdown(try(?(key); !val))> body
   
   dnx-mk-final-output: (header, instr, None()) -> out
@@ -37,8 +41,6 @@ rules
       out := <?(e, i); !e; length; ?(l); !(l, 0); ((gt; !e) <+ !(header, i))> (errors, instr)
       
   dnx-mk-final-output: (header, instr, err@MatchError(_)) -> [err]
-      
-  dnx-compile: _ -> <debug(!"[Dynamix] "); fail> "No Dynamix specification loaded! Compiling failed"
 
 rules          
   dnx-store-def =
