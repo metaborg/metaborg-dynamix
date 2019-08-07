@@ -72,7 +72,8 @@ rules // Statements
   control: instr -> ([instr], None())
   
   dnx-primitive-call(|p): ("link", [e1, e2, e3]) -> <stmt> [RGR_Link(e1, <try(fvm-convert-path)> e2, e3)]
-  dnx-primitive-call(|p): ("set", [e1, e2, e3]) -> <stmt> [RGR_Set(e1, <fvm-convert-path> e2, e3)]
+  dnx-primitive-call(|p): ("set", [e1, e2, e3]) -> <stmt> [RGR_Set(e1, <fvm-convert-path> e2, e3)] where <is-list> e2
+  dnx-primitive-call(|p): ("set", [e1, e2, e3]) -> <stmt> [RGR_Set(e1, e2, e3)]
   dnx-primitive-call(|p): ("empty", [e1, e2]) -> <stmt> [RGR_Empty(e1, e2)]
   dnx-primitive-call(|p): ("push", [e1, e2]) -> <stmt> [RGR_ContTransfer([e1], e2)]
   dnx-primitive-call(|p): ("setCF", [e1, e2, e3]) -> <stmt> [RGR_ContSet(e1, e2, e3)]
