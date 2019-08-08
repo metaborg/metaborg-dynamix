@@ -3,6 +3,11 @@ module dynamix/Compile
 menus
   
   menu: "Dynamix" (openeditor)
-    action: "Compile to FVM"    = dnx-compile-to-fvm
+    action: "Compile to FVM" = dnx-compile-to-fvm
+    action: "Run on FVM"     = dnx-run-fvm
+
+   separator
+
+    action: "Debug on FVM"      = dnx-run-fvm-debug
     action: "Compile show flat" = dnx-compile-to-flat-ast
-    action: "Compile show Dynamix spec aterm" = dnx-show-spec
+    action: "Show Dynamix spec aterm" = dnx-show-spec

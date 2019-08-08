@@ -7,20 +7,49 @@ imports
   
   fvm-util
   fvm-common
+  codegen/dnx-common
   
 rules // Debugging
     
   dnx-compile-to-fvm:
     (_, _, ast, path, project-path) -> (filename, result)
     with
-      filename := <guarantee-extension(|"dnx.rgr")> path
-    ; fname    := <base-filename; remove-extension> path
+      filename := <guarantee-extension(|"dnx.rgr")> path;
+      result := <compile-file-to-fvm; fvm-pp-flat> (path, ast)
+  
+  dnx-run-fvm:
+    (_, _, ast, path, project-path) -> (filename, result)
+    with
+      filename := <guarantee-extension(|"dnx.value")> path;
+      compiled := <compile-file-to-fvm> (path, ast);
+      file     := <store-fvm-program-to-file> (project-path, filename, compiled);
+      result   := <eval-framevm-file> file
+  
+  dnx-run-fvm-debug:
+    (_, _, ast, path, project-path) -> (filename, result)
+    with
+      filename := <guarantee-extension(|"dnx.value")> path;
+      compiled := <compile-file-to-fvm> (path, ast);
+      file     := <store-fvm-program-to-file> (project-path, filename, compiled);
+      result   := <eval-framevm-file-debug> file
+      
+  store-fvm-program-to-file: (path, basename, ast) -> $[[path]/[filename]]
+    with
+      filename := <guarantee-extension(|"rgr")> basename;
+      <WriteToFile(fprint)> (filename, [<fvm-pp-flat> ast])
+
+  compile-file-to-fvm: (path, ast) -> result
+    with
+      fname    := <base-filename; remove-extension> path
     ; compiled_spec := <dnx-load-compiled-spec>
     ; prog := <dnx-compile> (ast, compiled_spec)
-    ; result := <fvm-pp-flat> <(?( (header, instr) ); !(header, [(<dnx-primitive-mk-label> "MAIN", FVM_AutoSize()) | instr]) ) <+ id>
+    ; result := <((?( (header, instr) ); !(header, [(<dnx-primitive-mk-label> "MAIN", FVM_AutoSize()) | instr]) ) <+ id); fvm-compile-flat>
     
-  fvm-pp-flat: prog@(_, _) -> <pp-framevm> <rgr-assign-registers> <rgr-from-flat> prog
-  fvm-pp-flat: errors -> <((is-list; map(pp-match-error)) <+ (pp-match-error; ?(e); ![e])); concat-strings> errors
+  fvm-compile-flat: prog@(_, _) -> <rgr-assign-registers> <rgr-from-flat> prog
+  fvm-compile-flat: errors -> <((is-list; map(pp-match-error)) <+ (pp-match-error; ?(e); ![e])); concat-strings> errors
+  
+  fvm-pp-flat: errors -> errors where is-string
+  fvm-pp-flat: prog -> <pp-framevm> prog
 
   pp-match-error: MatchError(error) -> <concat-strings> [error, "\n"]
   pp-match-error: DNX_Error(error)  -> <concat-strings> [error, "\n"]
