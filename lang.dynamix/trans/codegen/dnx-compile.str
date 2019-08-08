@@ -10,6 +10,10 @@ imports
   codegen/dnx-instruction
     
 rules
+  // Compile an AST using a compiled Dynamix specification
+  // If the Dynamix specification is None(), an error is returned
+  // The output of this rule is either a tuple (header, instructions) that can be convered to a FVM AST
+  // or a list of errors when the AST could not be converted
   dnx-compile: (source_ast, Some(dnx-module)) -> out
     with
       NormModule(name, header, defs) := dnx-module;
@@ -20,20 +24,33 @@ rules
 
       // This is not nice, but it works
       <hashtable-put(|"namespaces", namespaces)> properties;
+      // Call the initial eval rule with the AST as argument
       (instr, err) := <dnx-call(|"eval", [], properties, blocks)> [source_ast];
-      tmp_labels := <hashtable-getlist; filter( (\ (key, val) -> (val, bound_val) where bound_key := <string-starts-with(|"tmp_lbl_"); string-replace(|"tmp_lbl_", "lbl_")> key; bound_val := <hashtable-get(|bound_key)> properties \) )> properties;
+
       compiled_header := <dnx-primitive-mk-header> header;
+      
+      // Get all the quoted blocks and make them proper blocks
       blocks_instr := <hashtable-getlist; map((\ (label, body) -> [(label, <dnx-primitive-autosize>) | body] \)); concat> blocks;
       body2 := <conc> (instr, blocks_instr);
-      body3 := <foldl(replace-tmp-labels)> (tmp_labels, body2); 
+      
+      // Some labels are still unbound. Replace these temporary binds with the actual bind
+      tmp_labels := <hashtable-getlist; filter( 
+          (\ (key, val) -> (val, bound_val) 
+            where 
+              bound_key := <string-starts-with(|"tmp_lbl_"); string-replace(|"tmp_lbl_", "lbl_")> key; 
+              bound_val := <hashtable-get(|bound_key)> properties
+          \) )> properties;
+      body3 := <foldl(replace-all-in)> (tmp_labels, body2); 
       out := <dnx-mk-final-output> (compiled_header, body3, err)
   
-  dnx-compile: (_, None()) -> DNX_Error(error)
+  // If there was no Dynamix spec, just throw an error
+  dnx-compile: (_, None()) -> [DNX_Error(error)]
     where
       error := <debug(!"[Dynamix] ")> "No Dynamix specification loaded! Compiling failed"
-  
-  replace-tmp-labels: ((key, val), body) -> <topdown(try(?(key); !val))> body
-  
+
+rules
+  // Given a tuple of a header, a list of instructions and a possible error
+  // return a list of errors or a tuple of a header and a list of instructions without any errors
   dnx-mk-final-output: (header, instr, None()) -> out
     where
       errors := <collect-all(?(MatchError(_)))> instr;
@@ -42,11 +59,18 @@ rules
       
   dnx-mk-final-output: (header, instr, err@MatchError(_)) -> [err]
 
-rules          
+rules
+  // Given a compiled Dynamix rule, add a getter for the rule        
   dnx-store-def =
     ?DefGroup(name, defs)
     ; rules( dnx-get-defs-by-name: name -> defs )
     
+  // Call a rule in the Dynamix spec with some arguments
+  // Defname is the name of the rule to call, param is an optional call-parameter, properties and blocks are the shared blocks with additional information required for compilation
+  //
+  // The result of a call is a tuple of a list of instructions and an expression (Paths and other terms result in an empty list and the path/term)
+  // The output expression of a call is always a reference to a register if the result was an expression
+  // The optimizer could inline these again in a later stage, but it makes sure we dont duplicate execution steps
   dnx-call(|defname, param, properties, blocks): args -> out
     with
       out := <dnx-call-(|defname, param, properties, blocks); call-out-to-register> args
@@ -59,23 +83,30 @@ rules
       (a_instr, None()) := <dnx-primitive-assign> (new_var, exp)
   call-out-to-register: e -> e
   
+  // Internal call function for non-primitive calls. Does the actual call, but not the result checking/conversion to registers
   dnx-call-(|defname, param, properties, blocks): args -> out
     where
+      // If it is a rule from the Dynamix spec
       defs := <dnx-get-defs-by-name> defname
     with
+      // Get the first rule case that matches with the given arguments
       match := <getfirst(dnx-match-rule(|args, param)) <+ !None()> defs;
-      bound_body := <dnx-compile-get-out(|defname, args)> match;
+      // Substitute all the arguments from the match into the body of the rule
+      bound_body := <dnx-unpack-match(|defname, args)> match;
       out := <dnx-compile-body(|properties, blocks)> bound_body
       
-  // Primitive
+  // Internal call function for primitive calls. Does the actual call, but not the result checking/conversion to registers
   dnx-call-(|primname, param, properties, blocks): args -> out
     where
-      [] := param
+      [] := param	// Primitives cannot have a param
     with
       out := <dnx-primitive-call(|properties) <+ (!${Missing primitive implementation for {<write-to-string> primname}}; debug(!"[Dynamix] "); fail)> (primname, args)
-        
-  dnx-compile-get-out(|defname, ast): Some(a) -> a
-  dnx-compile-get-out(|defname, ast): None() -> MatchError(error)
+
+rules
+  // If the match produced a Some, just unpack it
+  // Otherwise Create a nice error message that we cannot match the given AST to the given rule
+  dnx-unpack-match(|defname, ast): Some(a) -> a
+  dnx-unpack-match(|defname, ast): None() -> MatchError(error)
     where      
       rule_name_str := <write-to-string> defname;
       ast_str := <strip-annos; topdown(try(dnx-primitive-is-var; !Exp())); write-to-string> ast;

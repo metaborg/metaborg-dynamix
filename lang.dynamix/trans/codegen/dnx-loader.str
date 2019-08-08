@@ -7,25 +7,35 @@ imports
   
     
 rules
+  // Load the currently active Dynamix specification
+  // Returns an optional with None() if no spec could be loaded
   dnx-load-compiled-spec: _ -> Some(term)
     where
       main_module_name := "dynamic-semantics";
-      modules := <dnx-load-compiled-modules>;
-      <geq> (<length> modules, 0);
+      modules := <dnx-load-compiled-modules>;	// Get all modules
+      // Make sure there is at least a main module
       <lookup'> (main_module_name, modules)
     with
+      // Start with the main module and recursively load all imported modules as well
       (_, header, defs) := <load-module-recursively(|[])> main_module_name;
+      // Combine all the loaded modules into a single one
       term := NormModule(main_module_name, header, <dnx-group-defs> defs) 
-     
+  
+  // Loading failed
   dnx-load-compiled-spec: _ -> None()
     where
      <debug(!"[Dynamix] ")> "Module 'dynamic-semantics' not found"
-     
+
+rules
   dnx-load-compiled-modules: _ -> filepaths
     with
+      // Get the src-gen folder of the current language
       [(_, _, _, lang_root) | _] := <language-components>;
       path := $[[lang_root]/src-gen/dynamix/];
+      
+      // Get all the compiled Dynamix files from that folder
       filepaths := <readdir; filter(string-ends-with(|".dnxc")); map( (\fname -> (<remove-extension> fname, $[[path][fname]]) \) )> path;
+      // Load and store all the modules
       <map(load-module-from-file; store-module)> filepaths
       
   load-module-from-file: (fname, filepath) -> (fname, mod)
@@ -69,10 +79,7 @@ rules
     where
       DefGroup(_, other_cases) := <lookup'> (name, map)
     with
-      new_map := <map-update> (map, name, DefGroup(name, <concat> [cases, other_cases]))
+      new_map := <update-map> (map, name, DefGroup(name, <concat> [cases, other_cases]))
       
   dnx-group-defs-fold: (DefGroup(name, cases), map) -> [(name, DefGroup(name, cases))| map]
-  
-  map-update: ([(name, val) | tail], name, new_val) -> [(name, new_val) | tail]
-  map-update: ([e | tail], name, new_val) -> [e | <map-update> (tail, name, new_val)]
       

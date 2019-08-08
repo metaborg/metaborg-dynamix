@@ -46,7 +46,7 @@ rules // Debugging
     ; result := <((?( (header, instr) ); !(header, [(<dnx-primitive-mk-label> "MAIN", FVM_AutoSize()) | instr]) ) <+ id); fvm-compile-flat>
     
   fvm-compile-flat: prog@(_, _) -> <rgr-assign-registers> <rgr-from-flat> prog
-  fvm-compile-flat: errors -> <((is-list; map(pp-match-error)) <+ (pp-match-error; ?(e); ![e])); concat-strings> errors
+  fvm-compile-flat: errors -> <map(pp-match-error); concat-strings> errors
   
   fvm-pp-flat: errors -> errors where is-string
   fvm-pp-flat: prog -> <pp-framevm> prog

@@ -10,9 +10,18 @@ imports
   
   fvm-common
 
-  
+
 rules
+  // dnx-compile-exp compiles a Dynamix expression to a list of instructions and a vm-expression
+  // The rule takes two parameters (and the two hashtables that are threaded throughout the entire compilation)
+  // The first is a map with bindings from rule argument variables to their values
+  // The second is a map of bindings from rule-parameter names to actual rule names
+
+
   // Quotes need to skip this step, as their scoping is completely different
+  // First we check which Splices we need to add to the bindings
+  // Then we construct a new set of bindings from these and evaluate the body with these new bindings.
+  // The final result is stored in the table of generated quoted blocks, and a label to the generated blocks is returned
   dnx-compile-exp(|b, p, prop, blocks): DNX_Quote(Block(body)) -> ([], label)
     with
       quoted_binds_needed := <collect-all( (\ DNX_Splice(DNX_Var(var)) -> var\) )> body;
@@ -21,45 +30,41 @@ rules
       label := <newname; dnx-primitive-autolabel> "l_";
       <hashtable-put(|label, out)> blocks
       
+  // In the normal case we substitute all the variables with their actual values
+  // After this we call the internal expression compilation rules
   dnx-compile-exp(|b, p, prop, blocks): exp -> out
     with
-      bound_exp := <dnx-bind-args(|b)> exp;
+      bound_exp := <dnx-substitute-arguments(|b)> exp;
       out := <dnx-compile-exp(|p, prop, blocks)> bound_exp
       
-  dnx-bind-args(|binds): term -> <topdown(try(dnx-bind-args-(|binds)))> term
-  dnx-bind-args-(|binds): DNXTerm_Var(name) -> <dnx-bind-args-(|binds)> DNX_Var(name)
-  dnx-bind-args-(|binds): DNX_Splice(DNX_Var(name)) -> <lookup'> ($[~_[name]], binds)
-  dnx-bind-args-(|binds): DNX_Var(name) -> <lookup'> (name, binds)
+  // Replace all variable refereces with their values
+  dnx-substitute-arguments(|binds): term -> <topdown(try(dnx-substitute-arguments-(|binds)))> term
+  dnx-substitute-arguments-(|binds): DNXTerm_Var(name)         -> <dnx-substitute-arguments-(|binds)> DNX_Var(name)
+  dnx-substitute-arguments-(|binds): DNX_Splice(DNX_Var(name)) -> <lookup'> ($[~_[name]], binds)
+  dnx-substitute-arguments-(|binds): DNX_Var(name)             -> <lookup'> (name, binds)
        
 rules
+  // Call an other Dynamix rule with the given arguments
   dnx-compile-exp(|p, prop, b): DNX_Call(c_name, c_param, c_args) -> (instr, out_exp)
     with
+      // Get the name of the function to call. If it is a parameter variable, we get it from the map of parameters
       s_name := <lookup-or-default(|c_name)> (c_name, p);
+      // Same lookup for all the names in the parameters of this call
       s_param := <map((\ param -> <lookup-or-default(|param)> (param, p) \))> c_param;
+      
+      // Compile the arguments and extract the generated instructions
       (arg_instrs, args_exp) := <extract-instructions> <map(dnx-compile-exp(|p, prop, b))> c_args;
+      // Do the actual call
       (out_instr, out_exp) := <dnx-call(|s_name, s_param, prop, b)> args_exp;
       instr := <conc> (arg_instrs, out_instr)
-   
-  lookup-or-default(|default): (name, map) -> res
-    where
-      res := <getfirst((\(key, val) -> val where <equal> (name, key)\))> map
-  lookup-or-default(|default): _ -> default
-  
-  extract-instructions: [] -> ([], [])
-  
-  extract-instructions: [(instr, exp) | t] -> (<conc> (instr, tail_instr), [exp | tail_arg])
-    with
-      (tail_instr, tail_arg) := <extract-instructions> t
-
-  extract-instructions: [h | t] -> (tail_instr, [h | tail_arg])
-    with
-      (tail_instr, tail_arg) := <extract-instructions> t
       
+  // A reference to a variable remains a reference
   dnx-compile-exp(|p, prop, b): var@RGR_AutoVar(_) -> ([], var)
   
-//  dnx-compile-exp(|p, prop, b): DNX_Term(term) -> <debug(!"out: ")> <dnx-compile-term> <debug(!"in: ")>term
+  // A term representing a term should become the actual term
   dnx-compile-exp(|p, prop, b): DNX_Term(term) -> ([], <dnx-compile-term> term)
       
+  // Convert link labels and continuation references to the VM constructs that represent them
   dnx-compile-exp(|p, prop, b): DNX_Cont(name) -> ([], <dnx-primitive-cont-label> name)
   dnx-compile-exp(|p, prop, b): DNX_Link(name) -> ([], <dnx-primitive-link-label> name)
       
@@ -73,6 +78,9 @@ rules
   dnx-compile-exp(|p, prop, b): e -> <debug(!"[Dynamix] "); fail> $[Cannot compile expression: [<write-to-string> e]]
      
 rules
+  // Convert A DNXTerm representing a term to the term that it represents
+  // For example: DNXTerm_String("string") ---> "string"
+  // If it is alreade a proper Stratego term, this acts as the identity function
   dnx-compile-term: DNXTerm_Int(val) -> val
   dnx-compile-term: DNXTerm_String(string) -> string
   dnx-compile-term: DNXTerm_Pat(name, args) -> <mkterm> (name, <map(dnx-compile-term)> args)
@@ -86,5 +94,16 @@ rules
  
   dnx-compile-term: e -> e where <get-constructor; not(string-starts-with(|"DNXTerm_"))> e
   
+rules
+  // Given a list of tuples of a list of instructions and an expression, 
+  // make a tuple with a list of instructions and a list of expressions
+  // [(a, b), (c, d), (e,f)] ---> (<concat>[a, c, e], [b, d, f])
+  extract-instructions: [] -> ([], [])
+  extract-instructions: [(instr, exp) | t] -> (<conc> (instr, tail_instr), [exp | tail_arg])
+    with
+      (tail_instr, tail_arg) := <extract-instructions> t
 
+  extract-instructions: [h | t] -> (tail_instr, [h | tail_arg])
+    with
+      (tail_instr, tail_arg) := <extract-instructions> t
   

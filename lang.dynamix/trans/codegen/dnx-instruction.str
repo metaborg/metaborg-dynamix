@@ -16,7 +16,7 @@ rules
       body_with_labels := <topdown(try( (\ DNX_Label(name) -> <lookup'> (name, label_map) \) ))> body;
       out := <dnx-compile-instr(|binds, param_binds, properties, blockslocks)> (body_with_labels, [], None())
   
-  
+rules
   dnx-compile-instr(|b, p, prop, blocks): ([], instr, exp) -> (instr, exp)
   
   dnx-compile-instr(|b, p, prop, blocks): ([DNX_Exp(exp) | t], instrs, None()) -> out
