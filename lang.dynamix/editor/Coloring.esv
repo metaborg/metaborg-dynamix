@@ -12,6 +12,7 @@ colorer
   rulename     = 15 30 140 bold
   primitive    = 200 80 0 bold
   type         = 0 80 0 bold italic
+  label        = 0 0 0 bold
   
   
   black_bold = 0 0 0 bold
@@ -23,3 +24,4 @@ colorer
   PRIMNAME:    primitive
   Type._:      type
   STRING:      string
+  LABEL:       label

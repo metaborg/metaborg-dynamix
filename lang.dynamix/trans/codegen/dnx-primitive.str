@@ -4,6 +4,8 @@ imports
   nabl2/api
   nabl2/shared/-
   nabl2/runtime/analysis/-
+  signatures/nabl2/runtime/common/-
+  
   signatures/Dynamix-sig
   
   codegen/dnx-common
