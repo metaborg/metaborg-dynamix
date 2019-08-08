@@ -259,8 +259,10 @@ rules // Instructions
     s == s', 
     exp[[exp ^(s, p) : defrty]].
     
-  instr [[ DNX_Label(_) ^(s, s', _) : InstrT() ]] :=
-    s == s'.
+  instr [[ DNX_Label(name) ^(s, s', p) : InstrT() ]] :=
+    s == s',
+    Label{name} <- p,
+    distinct/name D(s)/Label | error $[Label [name] can only be defined once] @NAMES.
     
 rules // Expressions  
   exp [[DNX_Link(lbl) ^(s, _) : ty ]] :=
@@ -273,8 +275,10 @@ rules // Expressions
     Cont{lbl} |-> d | error $[Continuation with label [lbl] is not defined],
     d : ty.
     
-  exp [[DNX_Label(_) ^(s, _) : CodeT() ]]. // TODO: Check if these resolve in the current rule
-  
+  exp [[DNX_Label(name) ^(s, _) : CodeT() ]] :=
+    Label{name} -> s,
+    Label{name} |-> d | error $[Label [name] not defined] @name.
+
   exp [[DNX_Var(name) ^(s, _) : ty ]] :=
     Var{name} -> s,
     Var{name} |-> d | error $[Variable [name] not declared] @name,

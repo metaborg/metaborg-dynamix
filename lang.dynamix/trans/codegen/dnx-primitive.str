@@ -20,9 +20,10 @@ rules
       with
         a       := <nabl2-get-ast-analysis> name;
         ref-occ := <nabl2-mk-occurrence(|ns)> name;
-        (sg_path, _) := <nabl2-get-resolved-name(|a)> ref-occ
+        (_, sg_path) := <nabl2-get-resolved-name(|a)> ref-occ
       with
-        path := <(is-list <+ ![]); map(dnx-from-nabl2-path)> sg_path
+        path_body := <(split-init-last; Fst) <+ ![]> sg_path;
+        path      := <map(dnx-from-nabl2-path)> path_body
         
    dnx-primitive-call(|p): ("resolve-scope", [name, ns]) -> <debug(!"[Dynamix] "); fail> $[Cannot resolve the scope of [<strip-annos; write-to-string> name] in namespace [<strip-annos; write-to-string> ns]]
    
@@ -80,8 +81,8 @@ rules
       where
         (dec-occ, path) := <nabl2-get-resolved-name(|a)> ref-occ
       with
-        (path_body, path_end) := <split-init-last> path;
-        fvm_path     := <concat>[<map(dnx-from-nabl2-path)> path_body, [<dnx-resolve-name-slot(|namespace, name, properties, a)> dec-occ]]
+        path_body := <split-init-last; Fst> path;
+        fvm_path  := <concat>[<map(dnx-from-nabl2-path)> path_body, [<dnx-resolve-name-slot(|namespace, name, properties, a)> dec-occ]]
     
     dnx-resolve-name-path(|namespace, name, properties, a): ref-occ -> fvm_path 
       where
