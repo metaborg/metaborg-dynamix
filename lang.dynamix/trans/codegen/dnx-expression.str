@@ -75,7 +75,7 @@ rules
     with
       <not(string-starts-with(|"DNX_"))> <get-constructor> e
       
-  dnx-compile-exp(|p, prop, b): e -> <debug(!"[Dynamix] "); fail> $[Cannot compile expression: [<write-to-string> e]]
+  dnx-compile-exp(|p, prop, b): e -> <debug(!"[Dynamix] "); fail> $[Cannot compile expression: [<write-to-string> e]. This should have thrown a more specific error]
      
 rules
   // Convert A DNXTerm representing a term to the term that it represents

@@ -19,7 +19,8 @@ rules
       // Start with the main module and recursively load all imported modules as well
       (_, header, defs) := <load-module-recursively(|[])> main_module_name;
       // Combine all the loaded modules into a single one
-      term := NormModule(main_module_name, header, <dnx-group-defs> defs) 
+      term := NormModule(main_module_name, header, <dnx-group-defs> defs);
+      <debug(!"[Dynamix] ")> "Specification loaded"
   
   // Loading failed
   dnx-load-compiled-spec: _ -> None()

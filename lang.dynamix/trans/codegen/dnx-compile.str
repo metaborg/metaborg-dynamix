@@ -17,6 +17,7 @@ rules
   dnx-compile: (source_ast, Some(dnx-module)) -> out
     with
       NormModule(name, header, defs) := dnx-module;
+      <debug(!"[Dynamix] ")> "Started compile";
       <map(dnx-store-def)> defs;
       blocks := <new-hashtable>;
       properties := <new-hashtable>;
@@ -41,7 +42,7 @@ rules
               bound_val := <hashtable-get(|bound_key)> properties
           \) )> properties;
       body3 := <foldl(replace-all-in)> (tmp_labels, body2); 
-      out := <dnx-mk-final-output> (compiled_header, body3, err)
+      out := <dnx-mk-final-output; print-compile-finished-debug> (compiled_header, body3, err)
   
   // If there was no Dynamix spec, just throw an error
   dnx-compile: (_, None()) -> [DNX_Error(error)]
@@ -49,15 +50,21 @@ rules
       error := <debug(!"[Dynamix] ")> "No Dynamix specification loaded! Compiling failed"
 
 rules
+  // Print whether the compilation finished with or without errors
+  // If we get a tuple it was succesful, if we get a list there was at least 1 error
+  print-compile-finished-debug: e -> e
+    with <debug(!"[Dynamix] ")> $[Compilation finished with[<(is-list; !"") <+ !"out"> e] errors]
+  
+rules
   // Given a tuple of a header, a list of instructions and a possible error
   // return a list of errors or a tuple of a header and a list of instructions without any errors
   dnx-mk-final-output: (header, instr, None()) -> out
     where
-      errors := <collect-all(?(MatchError(_)))> instr;
+      errors := <collect-all(?(DNX_Error(_)))> instr;
       // If there are errors, show them. Otherwise output (header, instr)
       out := <?(e, i); !e; length; ?(l); !(l, 0); ((gt; !e) <+ !(header, i))> (errors, instr)
       
-  dnx-mk-final-output: (header, instr, err@MatchError(_)) -> [err]
+  dnx-mk-final-output: (header, instr, err@DNX_Error(_)) -> [err]
 
 rules
   // Given a compiled Dynamix rule, add a getter for the rule        
@@ -106,7 +113,7 @@ rules
   // If the match produced a Some, just unpack it
   // Otherwise Create a nice error message that we cannot match the given AST to the given rule
   dnx-unpack-match(|defname, ast): Some(a) -> a
-  dnx-unpack-match(|defname, ast): None() -> MatchError(error)
+  dnx-unpack-match(|defname, ast): None() -> DNX_Error(error)
     where      
       rule_name_str := <write-to-string> defname;
       ast_str := <strip-annos; topdown(try(dnx-primitive-is-var; !Exp())); write-to-string> ast;
