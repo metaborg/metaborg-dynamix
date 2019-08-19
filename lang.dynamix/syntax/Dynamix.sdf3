@@ -88,7 +88,7 @@ context-free syntax
  Exp.DNX_Call = <<DEFNAME><DefParam?>(<{Exp ","}*>)>
  Exp.DNX_CallPrim = <<PRIMNAME><DefParam?>(<{Exp ","}*>)> {prefer}
  Exp.DNX_Var = ID
- Exp.DNX_Label = LABEL
+ Exp.DNX_LabelExp = LABEL
  
  Exp.DNX_Quote = [<[Block]>]
  Exp.DNX_Splice = <~<Exp>>

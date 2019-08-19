@@ -32,6 +32,9 @@ rules
        ; result   := selected
 
 rules
+  // Label expressions are just labels
+  desugar-term: DNX_LabelExp(lbl) -> DNX_Label(lbl)
+  
   // Desugar the parameters of Definitions to be a (potentially empty) list  
   desugar-term: Def(name, None(), args, body) -> Def(name, [], args, body)
   desugar-term: Def(name, Some(Param(params)), args, body) -> Def(name, params, args, body)
