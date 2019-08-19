@@ -12,61 +12,68 @@ signature
     DefGroup: STRING * [DefCase] -> S
     DefCase: [Pattern] * [STRING] * [instruction] -> S
     DNX_BindExp: [STRING] * [Exp] -> S
-    MatchError: STRING -> S
     DNX_Error: STRING -> S
 
      
 rules
-    // Abuse a counter to get a global variable
-    // You dont want to use this as it is a hack and makes your code impure
-    // For example map/fold like operations could break as the order now matters.
+  // Abuse a counter to get a global variable
+  // You dont want to use this as it is a hack and makes your code impure
+  // For example map/fold like operations could break as the order now matters.
     
-    // Create a new global variable wit the given name and initial value
-    new-global: (name, val) -> val
-      with
-        <set-counter> (name, val)
+  // Create a new global variable wit the given name and initial value
+  new-global: (name, val) -> val
+    with
+      <set-counter> (name, val)
         
     // Get the global value with the given name
-    get-global: name -> val 
-      where
-        val := <get-counter> name;
-        <set-counter> (name, val)
+  get-global: name -> val 
+    where
+      val := <get-counter> name;
+      <set-counter> (name, val)
         
-    // Update the value in a global variable with the given name
-    update-global: (name, val) -> val 
-      where
-        <set-counter> (name, val)
+  // Update the value in a global variable with the given name
+  update-global: (name, val) -> val 
+    where
+      <set-counter> (name, val)
 
 rules
-    // Find the index of the first element in a list for which strategy s succeeds
-    // Strategy fails when the element is not in the list
-    find-index(s): [] -> <fail> 
-    find-index(s): [name|_] -> 0 where <s> name
-    find-index(s): [h|t] -> <find-index(s); inc> t
+  // Find the index of the first element in a list for which strategy s succeeds
+  // Strategy fails when the element is not in the list
+  find-index(s): [] -> <fail> 
+  find-index(s): [name|_] -> 0 where <s> name
+  find-index(s): [h|t] -> <find-index(s); inc> t
     
 rules
-    // Update the value stored at the given key in the map
-    // (map, key, new_value)
-    update-map: ([], key, val) -> <fail>
-    update-map: ([(key, _) | t], key, val) -> [(key, val) | t]
-    update-map: ([ h | t], key, val) -> [ h | <update-map> (t, key, val)]
-    
+  // Update the value stored at the given key in the map
+  // (map, key, new_value)
+  update-map: ([], key, val) -> <fail>
+  update-map: ([(key, _) | t], key, val) -> [(key, val) | t]
+  update-map: ([ h | t], key, val) -> [ h | <update-map> (t, key, val)]
+
 rules
-    // Split a list in three distinct lists
-    // The first will contain elements for which s1 succeeds
-    // The second will contain elements for which s2 succeeds
-    // The third will contain elements for which s3 succeeds
-    // If none of the strategies succeeds for an element, the strategy fails
-    //
-    // <split-list3(is-int; is-string; is-list)> [1, "a", [1, 2], "b", [], 2]  ---> ([1, 2], ["a", "b"], [[1, 2], []]) 
-    split-list3(s1, s2, s3): [] -> ([], [], [])
-    split-list3(s1, s2, s3): [h | t] -> ([h|a], b, c) where <s1> h;
-      (a, b, c) := <split-list3(s1, s2, s3)> t
-    split-list3(s1, s2, s3): [h | t] -> (a, [h|b], c) where <s2> h;
-      (a, b, c) := <split-list3(s1, s2, s3)> t
-    split-list3(s1, s2, s3): [h | t] -> (a, b, [h|c]) where <s3> h;
-      (a, b, c) := <split-list3(s1, s2, s3)> t
+  // Checks if a given element is in a list
+  // returns the original key
+  in-list(|map) = fetch-elem(eq)
+  
+rules
+  // Split a list in three distinct lists
+  // The first will contain elements for which s1 succeeds
+  // The second will contain elements for which s2 succeeds
+  // The third will contain elements for which s3 succeeds
+  // If none of the strategies succeeds for an element, the strategy fails
+  //
+  // <split-list3(is-int; is-string; is-list)> [1, "a", [1, 2], "b", [], 2]  ---> ([1, 2], ["a", "b"], [[1, 2], []]) 
+  split-list3(s1, s2, s3): [] -> ([], [], [])
+  split-list3(s1, s2, s3): [h | t] -> ([h'|a], b, c) where h' := <s1> h;
+    (a, b, c) := <split-list3(s1, s2, s3)> t
+  split-list3(s1, s2, s3): [h | t] -> (a, [h'|b], c) where h' := <s2> h;
+    (a, b, c) := <split-list3(s1, s2, s3)> t
+  split-list3(s1, s2, s3): [h | t] -> (a, b, [h'|c]) where h' := <s3> h;
+    (a, b, c) := <split-list3(s1, s2, s3)> t
     
+  // Same as the other split-list3, but the third list is a default for when s1 and s2 fail
+  split-list3(s1, s2) = split-list3(s1, s2, id)
+
 rules
   // Replace all instances of key with value in body
   replace-all-in: ((key, val), body) -> <topdown(try(?(key); !val))> body

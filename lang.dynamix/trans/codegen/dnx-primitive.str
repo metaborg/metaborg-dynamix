@@ -12,98 +12,160 @@ imports
   codegen/fvm-primitive
 
   
-rules
-   dnx-primitive-call(|p): ("resolve", [name, ns]) -> ([], path) where path := <dnx-resolve-name(|ns, p)> name
-   dnx-primitive-call(|p): ("resolve", [name, ns]) -> <debug(!"[Dynamix] "); fail> $[Cannot resolve [<strip-annos; write-to-string> name] in namespace [<strip-annos; write-to-string> ns]]
-   
-   dnx-primitive-call(|p): ("resolve-scope", [name, ns]) -> ([], path) 
-      with
-        a       := <nabl2-get-ast-analysis> name;
-        ref-occ := <nabl2-mk-occurrence(|ns)> name;
-        (_, sg_path) := <nabl2-get-resolved-name(|a)> ref-occ
-      with
-        path_body := <(split-init-last; Fst) <+ ![]> sg_path;
-        path      := <map(dnx-from-nabl2-path)> path_body
+rules // Generic primimitive operations whose implementation is not dependent on the VM
+  
+  // Resolve a name in a given namespace and return a path to the resolved variable
+  // This path can be empty if it resolves to the same scope, or if it is a declaration
+  dnx-primitive-call(|p): ("resolve", [name, ns]) -> ([], path) where path := <dnx-resolve-name(|ns, p)> name
+  dnx-primitive-call(|p): ("resolve", [name, ns]) -> ([], DNX_Error(msg))
+    with
+      msg := <debug(!"[Dynamix] ")> $[Cannot resolve [<strip-annos; write-to-string> name] in namespace [<strip-annos; write-to-string> ns]]
+
+
+ 
+  // Resolve a name and return a path to the scope of the declaration
+  dnx-primitive-call(|p): ("resolve-scope", [name, ns]) -> ([], path) 
+    with
+      a       := <nabl2-get-ast-analysis> name;
+      ref-occ := <nabl2-mk-occurrence(|ns)> name
+    where
+      (_, sg_path) := <nabl2-get-resolved-name(|a)> ref-occ
+    with
+      path_body := <(split-init-last; Fst) <+ ![]> sg_path;
+      path      := <map(dnx-from-nabl2-path)> path_body
         
-   dnx-primitive-call(|p): ("resolve-scope", [name, ns]) -> <debug(!"[Dynamix] "); fail> $[Cannot resolve the scope of [<strip-annos; write-to-string> name] in namespace [<strip-annos; write-to-string> ns]]
-   
-   dnx-primitive-call(|p): ("length", [list]) -> ([], res) where <is-list> list
-     with
-       res := <length; int-to-string> list
-   dnx-primitive-call(|p): ("zip-with-index", [list]) -> ([], <map-with-index( (\ (idx, term) -> (<dec> idx, term) \) )> list) where <is-list> list
-   dnx-primitive-call(|p): ("associate-index", [idx, term, ns]) -> ([], None() ) 
-     where <is-int> idx; <is-string> ns
-     with <dnx-primitive-associate-(|p, "idx")> (idx, term, ns)
-     
-   dnx-primitive-call(|p): ("associate-label", [lbl, term, ns]) -> ([], None() ) 
-     where <is-string> ns
-     with <dnx-primitive-associate-(|p, "lbl")> (lbl, term, ns)
-     
-   dnx-primitive-associate-(|p, type): (val, term, ns) -> term 
-     with
-       <nabl2-get-ast-analysis> term;
-       occ := <nabl2-mk-occurrence(|ns)> term;
-       TermIndex(termfile, termidx) := <nabl2-get-occurrence-index> occ;
-       <hashtable-put(|$[[type]_[termfile]_[termidx]], val)> p
-   
-   dnx-primitive-call(|p): ("continue", []) -> ([], None())
-   
-   
-   // If the label is already defined, we just resolve it and get the value.
-   // If it is a forward reference, we create a new one here. (On assoc-site we then get instead of set it)
-   dnx-primitive-call(|p): ("resolve-label", [name, ns]) -> ([], label)
-     where
-       a       := <nabl2-get-ast-analysis> name;
-       ref-occ := <nabl2-mk-occurrence(|ns)> name;
-       TermIndex(termfile, termidx) := <nabl2-get-resolved-name(|a); Fst; nabl2-get-occurrence-index> ref-occ;
-       label := <dnx-primitive-resolve-label(|p)> (termfile, termidx)
-       
-   dnx-primitive-resolve-label(|p): (file, idx) -> label
-     where
-       key := $[lbl_[file]_[idx]];
-       label := <hashtable-get(|key)> p
-       
-   dnx-primitive-resolve-label(|p): (file, idx) -> label
-     where
-       key := $[tmp_lbl_[file]_[idx]];
-       label := <newname; dnx-primitive-autolabel> "tmp_l_";
-       <hashtable-put(|key, label)> p
-   
+  dnx-primitive-call(|p): ("resolve-scope", [name, ns]) -> ([], DNX_Error(msg))
+    with
+      msg := <debug(!"[Dynamix] ")> $[Cannot resolve the scope of [<strip-annos; write-to-string> name] in namespace [<strip-annos; write-to-string> ns]]
+
+
+
+  // Get the length of a list
+  dnx-primitive-call(|p): ("length", [list]) -> ([], res) where <is-list> list
+    with
+      res := <length; int-to-string> list
+  dnx-primitive-call(|p): ("length", [list]) -> ([], DNX_Error(msg))
+    with
+      msg := <debug(!"[Dynamix] ")> $[length: [<strip-annos; write-to-string> list] is not a list]
+
+
+
+  // Zip a list with a list of indices
+  // zip-with-index([a, b, c]) => [(0, a), (1, b), (2, c)]
+  // TODO: This should be removed as soon as we have meta-arithmetic in Dynamix
+  dnx-primitive-call(|p): ("zip-with-index", [list]) -> ([], <map-with-index( (\ (idx, term) -> (<dec> idx, term) \) )> list) where <is-list> list
+  dnx-primitive-call(|p): ("zip-with-index", [list]) -> ([], DNX_Error(msg))
+    with
+      msg := <debug(!"[Dynamix] ")> $[zip-with-index: [<strip-annos; write-to-string> list] is not a list]
+
+
+
+  // Associate a specific index in a frame with the given occurence
+  dnx-primitive-call(|p): ("associate-index", [idx, term, ns]) -> ([], None() ) 
+    where <is-int> idx; <is-string> ns
+    with <dnx-primitive-associate-(|p, "idx")> (idx, term, ns)
+  dnx-primitive-call(|p): ("associate-index", [idx, term, ns]) -> ([], DNX_Error(msg) ) 
+    with
+      msg := <debug(!"[Dynamix] ")> $[associate-index: Exprected an int and a string, got [<strip-annos; write-to-string> idx] and [<strip-annos; write-to-string> ns]]
+
+
+
+  // Associate a code block label with the given occurence
+  dnx-primitive-call(|p): ("associate-label", [lbl, term, ns]) -> ([], None() ) 
+    where <is-string> ns
+    with <dnx-primitive-associate-(|p, "lbl")> (lbl, term, ns)
+  dnx-primitive-call(|p): ("associate-label", [lbl, term, ns]) -> ([], DNX_Error(msg) ) 
+    with
+      msg := <debug(!"[Dynamix] ")> $[associate-index: Exprected a string, got [<strip-annos; write-to-string> ns]]
+    
+  // Continue does nothing.
+  // It only exists to allow empty cases in maps/folds without the typesystem complaining
+  dnx-primitive-call(|p): ("continue", []) -> ([], None())
+  
+  // If the label is already defined, we just resolve it and get the value.
+  // If it is a forward reference, we create a new one here. (On assoc-site we then get it instead of set it)
+  dnx-primitive-call(|p): ("resolve-label", [name, ns]) -> ([], label)
+    where
+      a       := <nabl2-get-ast-analysis> name;
+      ref-occ := <nabl2-mk-occurrence(|ns)> name;
+      TermIndex(termfile, termidx) := <nabl2-get-resolved-name(|a); Fst; nabl2-get-occurrence-index> ref-occ;
+      label := <dnx-primitive-resolve-label(|p)> (termfile, termidx)
+      
+  dnx-primitive-call(|p): ("resolve-label", [name, ns]) -> ([], DNX_Error(msg))
+    with
+      msg := <debug(!"[Dynamix] ")> $[Cannot resolve the label of [<strip-annos; write-to-string> name] in namespace [<strip-annos; write-to-string> ns]]
+  
+  
+rules
+  // Get a label from the hashtable.
+  // If it does not exist, it must be a forward reference so we add a temporary label that we need to fix later
+  dnx-primitive-resolve-label(|p): (file, idx) -> label
+    where
+      key := $[lbl_[file]_[idx]];
+      label := <hashtable-get(|key)> p
+      
+  dnx-primitive-resolve-label(|p): (file, idx) -> label
+    where
+      key := $[tmp_lbl_[file]_[idx]];
+      label := <newname; dnx-primitive-autolabel> "tmp_l_";
+      <hashtable-put(|key, label)> p
+      
+rules
+  // Given a value a term and a namespace, associate the value to the term in the namespace.
+  dnx-primitive-associate-(|p, type): (val, term, ns) -> term 
+    with
+      <nabl2-get-ast-analysis> term;
+      occ := <nabl2-mk-occurrence(|ns)> term;
+      TermIndex(termfile, termidx) := <nabl2-get-occurrence-index> occ;
+      <hashtable-put(|$[[type]_[termfile]_[termidx]], val)> p
 
 rules
+  // Resolve a name in the given namespace and return the path
   dnx-resolve-name(|namespace, properties): name -> path
-      with
-        a       := <nabl2-get-ast-analysis> name;
-        ref-occ := <nabl2-mk-occurrence(|namespace)> name;
-        path    := <dnx-resolve-name-path(|namespace, name, properties, a)> ref-occ
+    with
+      a       := <nabl2-get-ast-analysis> name;
+      ref-occ := <nabl2-mk-occurrence(|namespace)> name
+    where
+      path    := <dnx-resolve-name-path(|namespace, name, properties, a)> ref-occ
+
+
+  // Resolve an occurence to a path. If the resolution failed, the occurence is a declaration.
+  dnx-resolve-name-path(|namespace, name, properties, a): ref-occ -> fvm_path 
+    where
+      (dec-occ, path) := <nabl2-get-resolved-name(|a)> ref-occ
+    with
+      path_body := <split-init-last; Fst> path;
+      fvm_path  := <concat>[<map(dnx-from-nabl2-path)> path_body, [<dnx-resolve-name-slot(|namespace, name, properties, a)> dec-occ]]
+   
+  dnx-resolve-name-path(|namespace, name, properties, a): ref-occ -> fvm_path 
+    where
+      fvm_path := [<dnx-resolve-name-slot(|namespace, name, properties, a)> ref-occ]
+
+
+  // Resolve the slot of an occurence.
+  // If it is in the hashtable, take that value.
+  // Otherwise we infer a slot location from the list of declarations in the scope  
+  dnx-resolve-name-slot(|namespace, name, prop, a): occ -> idx
+    where 
+      TermIndex(termfile, termidx) := <nabl2-get-occurrence-index> occ;
+      idx := <hashtable-get(|$[idx_[termfile]_[termidx]])> prop
         
-    dnx-resolve-name-path(|namespace, name, properties, a): ref-occ -> fvm_path 
-      where
-        (dec-occ, path) := <nabl2-get-resolved-name(|a)> ref-occ
-      with
-        path_body := <split-init-last; Fst> path;
-        fvm_path  := <concat>[<map(dnx-from-nabl2-path)> path_body, [<dnx-resolve-name-slot(|namespace, name, properties, a)> dec-occ]]
-    
-    dnx-resolve-name-path(|namespace, name, properties, a): ref-occ -> fvm_path 
-      where
-        fvm_path := [<dnx-resolve-name-slot(|namespace, name, properties, a)> ref-occ]
-        
-    dnx-resolve-name-slot(|namespace, name, prop, a): occ -> idx
-      where 
-        TermIndex(termfile, termidx) := <nabl2-get-occurrence-index> occ;
-        idx := <hashtable-get(|$[idx_[termfile]_[termidx]])> prop
-        
-    dnx-resolve-name-slot(|namespace, name, prop, a): occ -> idx
-      with
-        scope := <nabl2-get-decl-scope(|a)> occ;
-        occs := <nabl2-get-scope-decls(|a); filter(dnx-is-valid-occurrence(|<hashtable-get(|"namespaces")> prop))> scope;
-		idx := <find-index(dnx-is-occurrence-match(|namespace, name))> occs
-    
-    dnx-is-valid-occurrence(|namespaces): occ@Occurrence(Namespace(ns), _, _) -> occ
-      where
-        <elem> (ns, namespaces)
-        
-    dnx-is-occurrence-match(|req-ns, req-name): occ@Occurrence(Namespace(req-ns), name, _) -> occ where <equal> (<strip-annos> req-name, <strip-annos> name)
-    
-    dnx-from-nabl2-path: E(scope, lbl) -> <get-constructor> lbl
-    
+  dnx-resolve-name-slot(|namespace, name, prop, a): occ -> idx
+    where
+      scope := <nabl2-get-decl-scope(|a)> occ;
+      occs := <nabl2-get-scope-decls(|a); filter(dnx-is-valid-occurrence(|<hashtable-get(|"namespaces")> prop))> scope;
+	  idx := <find-index(dnx-is-occurrence-match(|namespace, name))> occs
+  
+  // Check if a given namespace is a slotting namespace
+  // The strategy fails when it is not.
+  dnx-is-valid-occurrence(|namespaces): occ@Occurrence(Namespace(ns), _, _) -> occ
+    where
+      <elem> (ns, namespaces)
+
+  // Check if an occurence in the term-index map is equal to the given occurence
+  dnx-is-occurrence-match(|req-ns, req-name): occ@Occurrence(Namespace(req-ns), name, _) -> occ
+    where
+      <equal> (<strip-annos> req-name, <strip-annos> name)
+  
+  // Convert components of Nabl2 paths to paths with named link labels
+  dnx-from-nabl2-path: E(scope, lbl) -> <get-constructor> lbl

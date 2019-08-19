@@ -11,6 +11,8 @@ imports
   external
 
 rules
+  // The on-save handler
+  // Compiles the Dynamix spec file and stores it in the src-gen folder
   dnx-on-save:
     (_, _, ast@Module(name, _, _, _, _, _), path, project-path) -> (full_name, result)
     where
@@ -20,27 +22,30 @@ rules
     ; full_name := $[[project-path]/[filename]]
     ; result   := <compile-dnx-spec> ast
     ; dnx-log(|"INFO", $<Writing compiled Dynamix spec to '<filename>'>)
-    
+  
+  // The on-save handler for when the analysis fails
+  // Discards the current spec and just reloads the previous one
   dnx-on-save:
     (_, _, ast@Module(name, _, _, _, _, _), path, project-path) -> (full_name, old)
    with
       filename := $[src-gen/dynamix/[name].dnxc]
     ; full_name := $[[project-path]/[filename]]
-    ; old := <get-previous-dnx-spec> full_name
+    ; old := <ReadFromFile> full_name
     ; dnx-log(|"INFO", $<Skipping compilation of '<filename>' as it has errors>)
-    
-rules
-  get-previous-dnx-spec: file -> <ReadFromFile> file
   
-rules      
+rules // Rules for compiling a Dynamix module to the stored format
+
+  // Compile a module to a Normalized Module with all annotations removed (as they are no longer needed after this)     
   compile-dnx-spec: Module(_,imports,_, Defs(types), Defs(defs), header) -> out 
     with
       // TODO: Check if this path works on Windows
       map := <new-hashtable>;
       <map(make-normDef(|map))> defs;
       grouped_defs := <hashtable-getlist; map( (\ (name, cases) -> DefGroup(name, <reverse> cases) \) )> map;
-      out := <strip-annos> NormModule(imports, <make-header> header, <resolve-binds-all> grouped_defs)
-      
+      out := <strip-annos> NormModule(imports, <check-header> header, <resolve-binds-all> grouped_defs)
+  
+  // If a bind has the type ExpT, convert the bind to an expression bind
+  // All other binds are compile-time binds and these need to be treated differently
   resolve-binds-all: term -> <topdown(try(resolve-binds))> term
   resolve-binds: bind@DNX_Bind(var, val) -> DNX_BindExp(var, val)
     where
@@ -49,17 +54,19 @@ rules
       type := <nabl2-get-type(|a)> occ;
       <equal> ("ExpT", <get-constructor> type)
   
-  make-header: h@DNX_Header(a, b, c) -> h
+  // Check if the header is non-empty 
+  check-header: h@DNX_Header(a, b, c) -> h
     where
       <gt> (<length> a, 0);
       <gt> (<length> b, 0);
       <gt> (<length> c, 0)
-  make-header: _ -> None()
-      
+  check-header: _ -> None()
+  
+  // Normalize a definition to a definition case
   make-normDef(|ht): d@Def(name, param, args, Block(body)) -> d
     where
       defcase := DefCase(args, param, body);
       cname := <strip-annos> name;
-      <hashtable-push(|cname, defcase)> ht
+      <hashtable-push(|cname, defcase)> ht  // Note that this is push, not put
    
   

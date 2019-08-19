@@ -28,6 +28,8 @@ rules
      <debug(!"[Dynamix] ")> "Module 'dynamic-semantics' not found"
 
 rules
+  // Discover all compiled DNX specs and load them.
+  // If we want to cache the loaded files, we need to track changes. But this is something for later
   dnx-load-compiled-modules: _ -> filepaths
     with
       // Get the src-gen folder of the current language
@@ -39,46 +41,58 @@ rules
       // Load and store all the modules
       <map(load-module-from-file; store-module)> filepaths
       
+  // Given a filename, load the module stored in that file
   load-module-from-file: (fname, filepath) -> (fname, mod)
     where
       mod := <ReadFromFile> filepath
-      
+  
+rules
+  // Load a module and all the modues it imports.
+  // All definition cases are grouped by their definition and the headers are merged (although only a single header is allowed at this point).
+  // All loaded modules names are stored in a list, such that we do not import already loaded modules again. 
   load-module-recursively(|map): name -> (newer_map, merged_header, merged_defs)
     where
-      <not(in-map(|map))> name
+      <not(in-list(|map))> name	// If not already loaded
     with
       (imports, header, defs) := <dnx-get-module-by-name> name;
       map2 := [name | map];
-      to_import := <filter(not(in-map(|map)))> imports;
+      to_import := <filter(not(in-list(|map)))> imports;
       
       (newer_map, new_header, new_defs) := <foldl(load-module-fold)> (to_import, (map2, None(), []));
       merged_header := <merge-header> (header, new_header);
       merged_defs := <concat> [defs, new_defs]
       
-  load-module-recursively(|map): name -> (map, None(), [])
+  load-module-recursively(|map): name -> (map, None(), []) // Already loaded, so nothing changes
   
-  in-map(|map): key -> key where <elem> (key, map) 
-  
+  // Internal function of module loading.
+  // Allows to fold over a list of module names and import them all.
   load-module-fold: (name, (map, header, defs)) -> (map2, <merge-header> (new_header, header), <concat> [new_defs, defs])
     with
       (map2, new_header, new_defs) := <load-module-recursively(|map)> name
 
+  // Store a module with a given name in a rule for easy access.
   store-module: (name, NormModule(imports, header, defs)) -> name
     where
       rules( dnx-get-module-by-name: name -> (imports, header, defs) )
       
-      
+  // Given two headers combine them in to a single header.
+  // For now fails when multiple headers have to be merged.
   merge-header: (None(), e) -> e
   merge-header: (h@DNX_Header(_, _, _), None()) -> h
   merge-header: (h1@DNX_Header(_, _, _), h2@DNX_Header(_, _, _)) -> <debug(!"[Dynamix] "); fail> "Cannot merge two headers" 
   
+rules
+  // Group all the definition cases based on their name.
+  // First a map is created using a fold, after this the values are extracted from the map and returned.5
   dnx-group-defs: defs -> out
     where
       out := <foldl(dnx-group-defs-fold); map( (\ (_, val) -> val \) )> (defs, [])
   
+  // If the definition is already in the map, update the existing definition with the new cases
+  // Otherwise add it to the map.
   dnx-group-defs-fold: (DefGroup(name, cases), map) -> new_map
     where
-      DefGroup(_, other_cases) := <lookup'> (name, map)
+      DefGroup(_, other_cases) := <lookup'> (name, map) // Already in the map
     with
       new_map := <update-map> (map, name, DefGroup(name, <concat> [cases, other_cases]))
       

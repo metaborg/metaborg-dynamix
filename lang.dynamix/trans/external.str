@@ -2,5 +2,6 @@ module external
 
 imports
   
-rules 
+rules
+  // Log a message on the specified log-level
   external dnx-log(|lvl, msg)

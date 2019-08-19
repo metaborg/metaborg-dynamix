@@ -9,26 +9,37 @@ imports
   codegen/dnx-expression
   
 rules
-  dnx-compile-body(|_, _): MatchError(error) -> ([], MatchError(error))
-  dnx-compile-body(|properties, blockslocks): (binds, param_binds, body) -> out
+  // Compile the body of a definition case with a set of bindings gotten from the arguments of the call.
+  // In the case of a match error, the error is propagated. 
+  //
+  // A body is compiled by first assigning new block labels for each DNX labael.
+  // After this, each instruction in the body is compiled in a fold-like operation.
+  dnx-compile-body(|_, _): DNX_Error(error) -> ([], DNX_Error(error))
+  dnx-compile-body(|properties, blocks): (binds, param_binds, body) -> out
     with
       label_map := <filter(?DNX_Label(_)); map( (\ DNX_Label(name) -> (name, <newname; dnx-primitive-autolabel> name) \) )> body;
       body_with_labels := <topdown(try( (\ DNX_Label(name) -> <lookup'> (name, label_map) \) ))> body;
-      out := <dnx-compile-instr(|binds, param_binds, properties, blockslocks)> (body_with_labels, [], None())
+      out := <dnx-compile-instr(|binds, param_binds, properties, blocks)> (body_with_labels, [], None())
   
 rules
+  // The empty list of instructions does not change the result
+  // Basecase of the recursion
   dnx-compile-instr(|b, p, prop, blocks): ([], instr, exp) -> (instr, exp)
   
+  // An expression just produces a list of instructions and some VM expression
   dnx-compile-instr(|b, p, prop, blocks): ([DNX_Exp(exp) | t], instrs, None()) -> out
     with
       (r_instr, r_exp) := <dnx-compile-exp(|b, p, prop, blocks)> exp;
       out := <dnx-compile-instr(|b, p, prop, blocks)> (t, <conc> (instrs, r_instr), r_exp)
-      
+  
+  // A return is an identity function for the expression it contains
   dnx-compile-instr(|b, p, prop, blocks): ([DNX_Return(exp) | t], instrs, None()) -> out
     with
-      (r_instr, r_exp) := <dnx-compile-exp(|b, p, prop, blocks)> exp;
-      out := <dnx-compile-instr(|b, p, prop, blocks)> (t, <conc> (instrs, r_instr), r_exp)
-      
+      out := <dnx-compile-instr(|b, p, prop, blocks)> ([DNX_Exp(exp) | t], instrs, None())
+  
+  // An expression bind needs to allocate a register and store the value of the expression in that register.
+  // If the DNX variable is already bound, we reuse the register and do not allocate a new one.
+  // Otherwise we also need to update the map of bindings for the instructions after this one. 
   dnx-compile-instr(|b, p, prop, blocks): ([DNX_BindExp(var, val) | t], instrs, None() ) -> out
     where
       dnx_var := <lookup'> (var, b)	// Already bound
@@ -36,7 +47,8 @@ rules
       (r_instr, r_exp) := <dnx-compile-exp(|b, p, prop, blocks)> val;
       (a_instr, None()) := <dnx-primitive-assign> (dnx_var, r_exp);
       out := <dnx-compile-instr(|b, p, prop, blocks)> (t, <conc> (instrs, r_instr, a_instr), None())
-      
+  
+  // Not already bound
   dnx-compile-instr(|b, p, prop, blocks): ([DNX_BindExp(var, val) | t], instrs, None() ) -> out
     with
       (r_instr, r_exp) := <dnx-compile-exp(|b, p, prop, blocks)> val;
@@ -44,7 +56,10 @@ rules
       (a_instr, None()) := <dnx-primitive-assign> (new_var, r_exp);
       newbind := (var, new_var);
       out := <dnx-compile-instr(|[newbind|b], p, prop, blocks)> (t, <conc> (instrs, r_instr, a_instr), None())
-      
+  
+  // A non-expression bind does, in contrast to an expression bind, not write the expression value to a register.
+  // These binds are only compile-time bindings.
+  // Therefore we only need to update the bindings map (or in the case of a fresh variable extend this map).
   dnx-compile-instr(|b, p, prop, blocks): ([DNX_Bind(var, val) | t], instrs, None() ) -> out
     where
       <lookup'> (var, b)	// Already bound
@@ -59,12 +74,14 @@ rules
       var_name := <newname> var;
       newbind := (var, res);
       out := <dnx-compile-instr(|[newbind|b], p, prop, blocks)> (t, instrs, None())
-      
+  
+  // A label does not change when compiled. We only make sure it is a label.  
   dnx-compile-instr(|b, p, prop, blocks): ([label | t], instrs, None()) -> out
     where
       <dnx-primitive-is-label> label
     with
       out := <dnx-compile-instr(|b, p, prop, blocks)> (t, <conc> (instrs, [label]), None())
   
-  dnx-compile-instr(|b, p, prop, blocks): ([e | _], _, _) -> <debug(!"[Dynamix] "); fail> $[Undefined instr: [<write-to-string> e]] 
+  // This case should never be triggered as cases for all different Dynamix constructs should be available
+  dnx-compile-instr(|b, p, prop, blocks): ([e | _], _, _) -> <debug(!"[Dynamix] "); fail> $[Undefined instr: [<write-to-string> e]. This should not happen in production] 
   

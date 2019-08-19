@@ -9,37 +9,67 @@ imports
   codegen/dnx-common
 
 rules
+  // Convert a generic path to a FVM path
   fvm-convert-path: [] -> FVM_Self()
   fvm-convert-path: path -> FVM_Path(<map(try(is-int; int-to-string))> path) where <is-list> path
   
 rules
+  // Create a fresh register with a given name
   dnx-primitive-autovar: name -> RGR_AutoVar(name)
+
+  // Create a fresh code block label
   dnx-primitive-autolabel: name -> FVM_AutoLabel(name)
+  
+  // Create an annotation to infer CF size
   dnx-primitive-autosize: _ -> FVM_AutoSize()
+  
+  // Check if the term is a register reference
   dnx-primitive-is-var: RGR_AutoVar(name) -> name
+  
+  // Check if the term is a code block label
   dnx-primitive-is-label: FVM_AutoLabel(name) -> name
-  dnx-primitive-is-exp: exp -> exp where (name, _) := <explode-term> exp; <string-starts-with(|"RGR_")> name  // Technically not correct, but good enough
+  
+  // Check if the term is an expression.
+  // The implementation is technically not correct, but good enough
+  dnx-primitive-is-exp: exp -> exp 
+    where
+       (name, _) := <explode-term> exp; <string-starts-with(|"RGR_")> name
+  
+  // Create a Continuation reference with the given name
   dnx-primitive-cont-label: name -> FVM_Cont(name)
+  
+  // Create a Link label with the given name
   dnx-primitive-link-label: name -> FVM_Link(name)
+  
+  // Assign a value to the given register
   dnx-primitive-assign: (var, val) -> ([RGR_Assign(var, val)], None())
+  
+  // Convert an integer to a machine integer
   dnx-primitive-int-constant: n -> RGR_IntVal(n)
+  
+  // Create a code block label with a given name
   dnx-primitive-mk-label: name -> FVM_Label(name)
+  
+  // Create a header object
   dnx-primitive-mk-header: DNX_Header(links, continuations, _) -> FVM_Header(<conc> (<map(dnx-primitive-mk-header-link)> links, <map(dnx-primitive-mk-header-cont)> continuations))
-      
+  
+  // Create a link label to use in a header
   dnx-primitive-mk-header-link: (idx, label) -> FVM_LinkAlias(FVM_Link(label), <int-to-string> idx)
+  
+  // Create a continuation label to use in a header
   dnx-primitive-mk-header-cont: (idx, name)  -> FVM_ContAlias(FVM_Cont(name), <int-to-string> idx)
 
 
 rules // Expressions
-  dnx-primitive-call(|p): ("pop", [e1]) -> ([], RGR_ContRGet(e1))
-  dnx-primitive-call(|p): ("curCF", []) -> ([], RGR_ContThis())
+  dnx-primitive-call(|p): ("pop", [e1])           -> ([], RGR_ContRGet(e1))
+  dnx-primitive-call(|p): ("curCF", [])           -> ([], RGR_ContThis())
   dnx-primitive-call(|p): ("newCF", [e1, e2, e3]) -> ([], RGR_ContNew(e1, e2, e3))
-  dnx-primitive-call(|p): ("getCF", [e1, e2]) -> ([], RGR_ContGet(e1, e2))
-  dnx-primitive-call(|p): ("unpackCF", [e1]) -> ([], RGR_ContUnpack(e1))
+  dnx-primitive-call(|p): ("getCF", [e1, e2])     -> ([], RGR_ContGet(e1, e2))
+  dnx-primitive-call(|p): ("unpackCF", [e1])      -> ([], RGR_ContUnpack(e1))
   
-  dnx-primitive-call(|p): ("char", [c]) -> ([], RGR_CharLoad(c))
-  dnx-primitive-call(|p): ("int", [n]) -> ([], RGR_ILoad(<string-to-int; int-to-string> n))
-  dnx-primitive-call(|p): ("ineg", [e1]) -> ([], RGR_INeg(e1))
+  dnx-primitive-call(|p): ("char", [c])      -> ([], RGR_CharLoad(c))
+  dnx-primitive-call(|p): ("int",  [n])      -> ([], RGR_ILoad(n))
+  dnx-primitive-call(|p): ("ineg", [e1])     -> ([], RGR_INeg(e1))
   dnx-primitive-call(|p): ("iadd", [e1, e2]) -> ([], RGR_IAdd(e1, e2))
   dnx-primitive-call(|p): ("imul", [e1, e2]) -> ([], RGR_IMul(e1, e2))
   dnx-primitive-call(|p): ("isub", [e1, e2]) -> ([], RGR_ISub(e1, e2))
@@ -68,21 +98,24 @@ rules // Expressions
   dnx-primitive-call(|p): ("closure-to-CF", [clos]) -> ([], RGR_ClosToCont(clos))
   
 rules // Statements
+  // Convert a statement to a list of instructions and expression tuple
   stmt: instrs -> (<map( (\ instr -> RGR_Stmt(instr) \) )> instrs, None())
+  
+  // Convert a control statement to a list of instructions and expression tuple
   control: instr -> ([instr], None())
   
-  dnx-primitive-call(|p): ("link", [e1, e2, e3]) -> <stmt> [RGR_Link(e1, <try(fvm-convert-path)> e2, e3)]
-  dnx-primitive-call(|p): ("set", [e1, e2, e3]) -> <stmt> [RGR_Set(e1, <fvm-convert-path> e2, e3)] where <is-list> e2
-  dnx-primitive-call(|p): ("set", [e1, e2, e3]) -> <stmt> [RGR_Set(e1, e2, e3)]
-  dnx-primitive-call(|p): ("empty", [e1, e2]) -> <stmt> [RGR_Empty(e1, e2)]
-  dnx-primitive-call(|p): ("push", [e1, e2]) -> <stmt> [RGR_ContTransfer([e1], e2)]
+  dnx-primitive-call(|p): ("link", [e1, e2, e3])  -> <stmt> [RGR_Link(e1, <try(fvm-convert-path)> e2, e3)]
+  dnx-primitive-call(|p): ("set", [e1, e2, e3])   -> <stmt> [RGR_Set(e1, <fvm-convert-path> e2, e3)] where <is-list> e2
+  dnx-primitive-call(|p): ("set", [e1, e2, e3])   -> <stmt> [RGR_Set(e1, e2, e3)]
+  dnx-primitive-call(|p): ("empty", [e1, e2])     -> <stmt> [RGR_Empty(e1, e2)]
+  dnx-primitive-call(|p): ("push", [e1, e2])      -> <stmt> [RGR_ContTransfer([e1], e2)]
   dnx-primitive-call(|p): ("setCF", [e1, e2, e3]) -> <stmt> [RGR_ContSet(e1, e2, e3)]
-  dnx-primitive-call(|p): ("mkcur", [e1]) -> <stmt> [RGR_ScopeSetCurrent(e1)]
-  dnx-primitive-call(|p): ("print", [e1]) -> <stmt> [RGR_Print(e1)]
-  dnx-primitive-call(|p): ("printc", [e1]) -> <stmt> [RGR_PrintChar(e1)]
+  dnx-primitive-call(|p): ("mkcur", [e1])         -> <stmt> [RGR_ScopeSetCurrent(e1)]
+  dnx-primitive-call(|p): ("print", [e1])         -> <stmt> [RGR_Print(e1)]
+  dnx-primitive-call(|p): ("printc", [e1])        -> <stmt> [RGR_PrintChar(e1)]
   
   dnx-primitive-call(|p): ("jump", [e1]) -> <control> RGR_Jump(e1)
   dnx-primitive-call(|p): ("jumpz", [e1, e2, e3]) -> <control> RGR_JumpZ(e1, e2, e3)
-  dnx-primitive-call(|p): ("callCF", [e1]) -> ([RGR_ContCall(e1, label), label], None()) where label := <newname; dnx-primitive-autolabel> "l_" 
+  dnx-primitive-call(|p): ("callCF", [e1]) -> ([RGR_ContCall(e1, label), label], None()) with label := <newname; dnx-primitive-autolabel> "l_" 
   dnx-primitive-call(|p): ("returnCF", [e1]) -> <control> RGR_ContReturn(e1)
  

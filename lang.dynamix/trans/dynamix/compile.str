@@ -10,13 +10,16 @@ imports
   codegen/dnx-common
   
 rules // Debugging
-    
+  // Compile an AST to FVM bytecode using the loaded Dynamix spec 
   dnx-compile-to-fvm:
     (_, _, ast, path, project-path) -> (filename, result)
     with
       filename := <guarantee-extension(|"dnx.rgr")> path;
       result := <compile-file-to-fvm; fvm-pp-flat> (path, ast)
   
+  
+  // Compile an AST to FVM bytecode using the loaded Dynamix spec,
+  // Store it in a file and execute the file
   dnx-run-fvm:
     (_, _, ast, path, project-path) -> (filename, result)
     with
@@ -25,6 +28,8 @@ rules // Debugging
       file     := <store-fvm-program-to-file> (project-path, filename, compiled);
       result   := <eval-framevm-file> file
   
+  // Compile an AST to FVM bytecode using the loaded Dynamix spec,
+  // Store it in a file and execute the file in debug mode
   dnx-run-fvm-debug:
     (_, _, ast, path, project-path) -> (filename, result)
     with
@@ -32,28 +37,9 @@ rules // Debugging
       compiled := <compile-file-to-fvm> (path, ast);
       file     := <store-fvm-program-to-file> (project-path, filename, compiled);
       result   := <eval-framevm-file-debug> file
-      
-  store-fvm-program-to-file: (path, basename, ast) -> $[[path]/[filename]]
-    with
-      filename := <guarantee-extension(|"rgr")> basename;
-      <WriteToFile(fprint)> (filename, [<fvm-pp-flat> ast])
-
-  compile-file-to-fvm: (path, ast) -> result
-    with
-      fname    := <base-filename; remove-extension> path
-    ; compiled_spec := <dnx-load-compiled-spec>
-    ; prog := <dnx-compile> (ast, compiled_spec)
-    ; result := <((?( (header, instr) ); !(header, [(<dnx-primitive-mk-label> "MAIN", FVM_AutoSize()) | instr]) ) <+ id); fvm-compile-flat>
-    
-  fvm-compile-flat: prog@(_, _) -> <rgr-assign-registers> <rgr-from-flat> prog
-  fvm-compile-flat: errors -> <map(pp-match-error); concat-strings> errors
   
-  fvm-pp-flat: errors -> errors where is-string
-  fvm-pp-flat: prog -> <pp-framevm> prog
-
-  pp-match-error: MatchError(error) -> <concat-strings> [error, "\n"]
-  pp-match-error: DNX_Error(error)  -> <concat-strings> [error, "\n"]
-  
+  // Compile an AST to FVM bytecode using the loaded Dynamix spec,
+  // The AST is shown as Aterm and not pretty-printed
   dnx-compile-to-flat-ast:
     (_, _, ast, path, project-path) -> (filename, result)
     with
@@ -62,6 +48,7 @@ rules // Debugging
     ; compiled_spec := <dnx-load-compiled-spec>
     ; result   := <dnx-compile> (ast, compiled_spec)
   
+  // Show the loaded DNX specification Aterm
   dnx-show-spec:
     (_, _, ast, path, project-path) -> (filename, result)
     with
@@ -69,3 +56,26 @@ rules // Debugging
     ; fname    := <base-filename; remove-extension> path
     ; result := <dnx-load-compiled-spec>
     
+rules
+  // Store a FVM AST to the specified file
+  store-fvm-program-to-file: (path, basename, ast) -> $[[path]/[filename]]
+    with
+      filename := <guarantee-extension(|"rgr")> basename;
+      <WriteToFile(fprint)> (filename, [<fvm-pp-flat> ast])
+
+  // Compile a file with given AST to FVM bytecode.
+  // First load the active DNX spec and use this to compile the AST
+  compile-file-to-fvm: (path, ast) -> result
+    with
+      fname    := <base-filename; remove-extension> path
+    ; compiled_spec := <dnx-load-compiled-spec>
+    ; prog := <dnx-compile> (ast, compiled_spec)
+    ; result := <((?( (header, instr) ); !(header, [(<dnx-primitive-mk-label> "MAIN", FVM_AutoSize()) | instr]) ) <+ id); fvm-compile-flat>
+  
+  // Convert the compile output to either a valid FVM AST or a string of the encountered errors
+  fvm-compile-flat: prog@(_, _) -> <rgr-from-flat; rgr-assign-registers> prog
+  fvm-compile-flat: errors -> <map( (\ DNX_Error(e) -> <concat-strings> [e, "\n"] \) ); concat-strings> errors
+  
+  // Prettyprint the FVM AST or propagate the errors
+  fvm-pp-flat: errors -> errors where is-string
+  fvm-pp-flat: prog -> <pp-framevm> prog

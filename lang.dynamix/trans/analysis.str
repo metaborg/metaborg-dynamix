@@ -9,18 +9,19 @@ imports
   signatures/Dynamix-sig
   codegen/dnx-common
   
-rules // Analysis
+rules
   desugar = collect-def-types; collect-prim-names; desugar-all; build-header
   editor-analyze = nabl2-analyze(desugar)
 
-  
   desugar-all = topdown(try(desugar-term))
-rules // Debugging
+  
+rules
   // Prints the abstract syntax ATerm of a selection.
   debug-show-aterm: (selected, _, _, path, project-path) -> (filename, result)
     with filename := <guarantee-extension(|"aterm")> path
        ; result   := selected
   
+  // Prints the desugared syntax ATerm.
   debug-show-desugared-aterm: (_, _, ast, path, project-path) -> (filename, result)
     with filename := <guarantee-extension(|"desuagered.aterm")> path
        ; result   := <desugar> ast
@@ -31,16 +32,25 @@ rules // Debugging
        ; result   := selected
 
 rules
-  
+  // Desugar the parameters of Definitions to be a (potentially empty) list  
   desugar-term: Def(name, None(), args, body) -> Def(name, [], args, body)
   desugar-term: Def(name, Some(Param(params)), args, body) -> Def(name, params, args, body)
   
+  // Desugar parameters of calls to lists
   desugar-term: DNX_Call(name, None(), args) -> DNX_Call(name, [], args)
   desugar-term: DNX_Call(name, Some(Param(params)), args) -> DNX_Call(name, params, args)
   
+  // Desugar primitive calls to normal calls
+  desugar-term: DNX_CallPrim(name, param, args) -> <desugar-term> DNX_Call(name, param, args)
+  
+  // Fix the quotation and escaping of strings
+  desugar-term: DNXTerm_String(string) -> DNXTerm_String(<unquote(id); string-replace(|"\\\\", "\\")> string)
+  
+  // Desugar parameters of type signatures to lists
   desugar-term: TypeDef(name, None(), argsty, retty) -> TypeDef(name, [], argsty, retty)
   desugar-term: TypeDef(name, Some(ParamTypeList(params)), argsty, retty) -> TypeDef(name, params, argsty, retty)
   
+  // Split the definition types and implementations
   collect-def-types: Module(name, definitions) -> Module(name, imports, [], Defs(type_decls), Defs(def_decls), header)
     where
       (imports, header, defs) := <split-list3(?Imports(_), ?Header(_), ?Defs(_))> definitions;
@@ -48,6 +58,8 @@ rules
       def_decls  := <filter(?Def(_, _, _, _))> all_defs;
       type_decls := <filter(?TypeDef(_, _, _, _))> all_defs
   
+  // Collect the names of primitive operations
+  // For modules other than the main module, this returns an empty list
   collect-prim-names: Module(name@"dynamic-semantics", imports, _, types, defs, candl) -> Module(name, imports, prim_names, types, defs, candl)
     where
       prim_names := [
@@ -64,12 +76,8 @@ rules
       ]
       
   collect-prim-names: Module(name, imports, _, types, defs, candl) -> Module(name, imports, [], types, defs, candl)
-    
-  desugar-term: DNX_CallPrim(name, param, args) -> <desugar-term> DNX_Call(name, param, args)
-  desugar-term: DNXTerm_String(string) -> DNXTerm_String(<unquote(id); unescape> string)
-  un-escape = string-replace(|"\\\\", "\\")//; string-replace(|"\\n", "\n"); string-replace(|"\\t", "\t"); string-replace(|"\\'", "'"); string-replace(|"\\\"", "\"")
-    
-    
+  
+  // Build the header of a module by extracting all relevant header information from the AST
   build-header: Module(name, imports, primitives, types, defs, header_elems) -> Module(name, imports', primitives, types, defs, header')
     where
       headers := <mapconcat(?Header(a); !a)> header_elems;
