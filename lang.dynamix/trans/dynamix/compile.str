@@ -23,20 +23,20 @@ rules // Debugging
   dnx-run-fvm:
     (_, _, ast, path, project-path) -> (filename, result)
     with
-      filename := <guarantee-extension(|"dnx.value")> path;
-      compiled := <compile-file-to-fvm> (path, ast);
-      file     := <store-fvm-program-to-file> (project-path, filename, compiled);
-      result   := <eval-framevm-file> file
+      filename  := <guarantee-extension(|"dnx.value")> path;
+      compiled  := <compile-file-to-fvm> (path, ast);
+      (_, file) := <store-fvm-program-to-file> (project-path, filename, compiled);
+      result    := <eval-framevm(|<remove-extension> file)> compiled
   
   // Compile an AST to FVM bytecode using the loaded Dynamix spec,
   // Store it in a file and execute the file in debug mode
   dnx-run-fvm-debug:
     (_, _, ast, path, project-path) -> (filename, result)
     with
-      filename := <guarantee-extension(|"dnx.value")> path;
-      compiled := <compile-file-to-fvm> (path, ast);
-      file     := <store-fvm-program-to-file> (project-path, filename, compiled);
-      result   := <eval-framevm-file-debug> file
+      filename  := <guarantee-extension(|"dnx.value")> path;
+      compiled  := <compile-file-to-fvm> (path, ast);
+      (_, file) := <store-fvm-program-to-file> (project-path, filename, compiled);
+      result    := <eval-framevm-debug(|<remove-extension> file)> compiled
   
   // Compile an AST to FVM bytecode using the loaded Dynamix spec,
   // The AST is shown as Aterm and not pretty-printed
@@ -58,7 +58,7 @@ rules // Debugging
     
 rules
   // Store a FVM AST to the specified file
-  store-fvm-program-to-file: (path, basename, ast) -> $[[path]/[filename]]
+  store-fvm-program-to-file: (path, basename, ast) -> (path, filename)
     with
       filename := <guarantee-extension(|"rgr")> basename;
       <WriteToFile(fprint)> (filename, [<fvm-pp-flat> ast])
