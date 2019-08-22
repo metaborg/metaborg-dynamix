@@ -11,12 +11,12 @@ imports
 rules
   // Convert a generic path to a FVM path
   fvm-convert-path: [] -> FVM_Self()
-  fvm-convert-path: path -> FVM_Path(<map(fvm-convert-path-elem)> path) where <is-list> path
+  fvm-convert-path: path -> FVM_Path(<map(try(fvm-convert-path-elem))> path) where <is-list> path
   
   // Convert an element of a path to a VM path element
   // If its an int, it must be a slot. Otherwise its a link.
   fvm-convert-path-elem: e -> FVM_Slot(<int-to-string> e) where is-int
-  fvm-convert-path-elem: e -> FVM_Link(e)
+  fvm-convert-path-elem: e -> FVM_Link(e) where is-string
   
 rules
   // Create a fresh register with a given name
