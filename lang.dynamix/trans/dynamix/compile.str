@@ -15,7 +15,7 @@ rules // Debugging
     (_, _, ast, path, project-path) -> (filename, result)
     with
       filename := <guarantee-extension(|"dnx.rgr")> path;
-      result := <compile-file-to-fvm; fvm-pp-flat> (path, ast)
+      result := <compile-file-to-fvm; fvm-pp-flat> ast
   
   
   // Compile an AST to FVM bytecode using the loaded Dynamix spec,
@@ -24,7 +24,7 @@ rules // Debugging
     (_, _, ast, path, project-path) -> (filename, result)
     with
       filename  := <guarantee-extension(|"dnx.value")> path;
-      compiled  := <compile-file-to-fvm> (path, ast);
+      compiled  := <compile-file-to-fvm> ast;
       (_, file) := <store-fvm-program-to-file> (project-path, filename, compiled);
       result    := <eval-framevm(|<remove-extension> file)> compiled
   
@@ -34,7 +34,7 @@ rules // Debugging
     (_, _, ast, path, project-path) -> (filename, result)
     with
       filename  := <guarantee-extension(|"dnx.value")> path;
-      compiled  := <compile-file-to-fvm> (path, ast);
+      compiled  := <compile-file-to-fvm> ast;
       (_, file) := <store-fvm-program-to-file> (project-path, filename, compiled);
       result    := <eval-framevm-debug(|<remove-extension> file)> compiled
   
@@ -65,10 +65,9 @@ rules
 
   // Compile a file with given AST to FVM bytecode.
   // First load the active DNX spec and use this to compile the AST
-  compile-file-to-fvm: (path, ast) -> result
+  compile-file-to-fvm: ast -> result
     with
-      fname    := <base-filename; remove-extension> path
-    ; compiled_spec := <dnx-load-compiled-spec>
+      compiled_spec := <dnx-load-compiled-spec>
     ; prog := <dnx-compile> (ast, compiled_spec)
     ; result := <((?( (header, instr) ); !(header, [(<dnx-primitive-mk-label> "MAIN", FVM_AutoSize()) | instr]) ) <+ id); fvm-compile-flat>
   
@@ -79,3 +78,10 @@ rules
   // Prettyprint the FVM AST or propagate the errors
   fvm-pp-flat: errors -> errors where is-string
   fvm-pp-flat: prog -> <pp-framevm> prog
+  
+rules
+  // Action for running SPT tests
+  dnx-run-spt: ast -> result
+    with
+      compiled  := <compile-file-to-fvm> ast;
+      result    := <eval-framevm(|<remove-extension> "spt.test")> compiled
