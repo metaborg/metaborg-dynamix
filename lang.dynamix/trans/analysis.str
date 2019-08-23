@@ -47,7 +47,8 @@ rules
   desugar-term: DNX_CallPrim(name, param, args) -> <desugar-term> DNX_Call(name, param, args)
   
   // Fix the quotation and escaping of strings
-  desugar-term: DNXTerm_String(string) -> DNXTerm_String(<unquote(id); string-replace(|"\\\\", "\\")> string)
+  desugar-term: DNXTerm_String(string) -> DNXTerm_String(<unquote(id); unescape> string)
+  desugar-term: DNXTerm_Int(val) -> DNXTerm_Int(<string-to-int> val)
   
   // Desugar parameters of type signatures to lists
   desugar-term: TypeDef(name, None(), argsty, retty) -> TypeDef(name, [], argsty, retty)

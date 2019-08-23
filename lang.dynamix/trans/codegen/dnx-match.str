@@ -64,11 +64,12 @@ rules
       <is-string> arg;
       <equal> (<strip-annos> arg, string)
 
-//  // Match an integer
-//  dnx-match-arg: (arg, DNXTerm_Int(val)) -> []
-//    where
-//      <is-int> arg;
-//      <equal> <debug> (<strip-annos> arg, val)
+  // Match an integer
+  dnx-match-arg: (arg, DNXTerm_Int(val)) -> []
+    where
+      <debug(!"int: ")> (arg, val);
+      <is-int> arg;      
+      <equal> <debug> (<strip-annos> arg, <string-to-int> val)
   
   // Match a list and al elements in the list
   dnx-match-arg: (arg, DNXTerm_List(elems)) -> binds
