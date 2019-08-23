@@ -190,10 +190,6 @@ rules
     Def{name} <- s,
     Def{name} : DefT([], [TermT()], TermT()) !.
     
-  primNames[[ name@"zip-with-index" ^(s)]] :=
-    Def{name} <- s,
-    Def{name} : DefT([], [TermT()], TermT()) !.
-    
   primNames[[ name@"associate-index" ^(s)]] :=
     Def{name} <- s,
     Def{name} : DefT([], [TermT(), TermT(), TermT()], InstrT()) !.

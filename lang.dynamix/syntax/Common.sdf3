@@ -99,7 +99,6 @@ lexical syntax
   PRIMNAME = "resolve-scope"
   PRIMNAME = "continue"
   PRIMNAME = "length"
-  PRIMNAME = "zip-with-index"
   PRIMNAME = "associate-index"
   PRIMNAME = "associate-label"
   

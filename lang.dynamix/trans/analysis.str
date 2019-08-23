@@ -74,7 +74,7 @@ rules
       		"mk-closure", "closure-to-CF", 
       		"new", "size", "link", "set", "mkcur", "cur", "get", "is-empty", 
       		"resolve", "resolve-label", "resolve-scope", 
-      		"continue", "length", "zip-with-index", 
+      		"continue", "length", 
       		"associate-index", "associate-label"
       ]
       

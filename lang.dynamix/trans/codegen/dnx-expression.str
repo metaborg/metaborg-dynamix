@@ -9,6 +9,7 @@ imports
   codegen/fvm-primitive
   
   fvm-common
+  nabl2/api
 
 
 rules
@@ -80,7 +81,7 @@ rules
 rules
   // Convert A DNXTerm representing a term to the term that it represents
   // For example: DNXTerm_String("string") ---> "string"
-  // If it is alreade a proper Stratego term, this acts as the identity function
+  // If it is already a proper Stratego term, this acts as the identity function
   dnx-compile-term: DNXTerm_Int(val) -> val
   dnx-compile-term: DNXTerm_String(string) -> string
   dnx-compile-term: DNXTerm_Pat(name, args) -> <mkterm> (name, <map(dnx-compile-term)> args)
