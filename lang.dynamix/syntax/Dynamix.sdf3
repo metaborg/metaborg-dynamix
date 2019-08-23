@@ -77,6 +77,8 @@ context-free syntax
  Pattern.DNXTerm_Tuple = <(<{Pattern ","}*>)>
  Pattern.DNXTerm_ListTail = <[<{Pattern ","}+> | <Pattern>]>
  Pattern.DNXTerm_ListLast = <[<Pattern> || <{Pattern ","}+>]>
+ Pattern.DNXTermOp_Add = <<Pattern> + <Pattern>> {left}
+ Pattern.DNXTermOp_Sub = <<Pattern> - <Pattern>> {left}
  
  Instruction.DNX_Bind = [
   [ID] <- [Exp]

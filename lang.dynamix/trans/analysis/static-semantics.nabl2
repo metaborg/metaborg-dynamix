@@ -159,6 +159,12 @@ rules // Parameter terms
     
   parterm[[term@DNXTerm_At(name, pattern) ^(s) : TermT()]] :=
     false | error $[[name] must be a variable] @term.
+    
+  parterm[[term@DNXTermOp_Add(l, r) ^(s) : TermT()]] :=
+    false | error $[Cannot use meta-arithmetic in rule header] @term.
+    
+  parterm[[term@DNXTermOp_Sub(l, r) ^(s) : TermT()]] :=
+    false | error $[Cannot use meta-arithmetic in rule header] @term.
      
   parterm[[DNXTerm_Type(pattern, type) ^(s) : TermT()]] :=
     parterm [[pattern ^(s) : TermT()]].
@@ -222,6 +228,14 @@ rules // Expression terms
   expterm[[DNXTerm_String(_) ^(s) : TermT()]].
   expterm[[DNX_Link(_) ^(s) : TermT()]].
   expterm[[DNX_Cont(_) ^(s) : TermT()]].
+  
+  expterm[[term@DNXTermOp_Add(l, r) ^(s) : TermT()]] :=
+    expterm[[l ^(s) : TermT()]],
+    expterm[[r ^(s) : TermT()]].
+    
+  expterm[[term@DNXTermOp_Sub(l, r) ^(s) : TermT()]] :=
+    expterm[[l ^(s) : TermT()]],
+    expterm[[r ^(s) : TermT()]].
   
   exptermMap [[ [] ^(s) : ty ]].
   exptermMap [[ [h|t] ^(s) : ty ]] :=

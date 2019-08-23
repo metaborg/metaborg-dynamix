@@ -93,7 +93,25 @@ rules
   dnx-compile-term: DNX_Link(name) -> <dnx-primitive-link-label> name
   dnx-compile-term: DNXTerm_At(term, var) -> <dnx-compile-term; nabl2-copy-ast-index(|var)> term
  
-  dnx-compile-term: e -> e where <get-constructor; not(string-starts-with(|"DNXTerm_"))> e
+  dnx-compile-term: DNXTermOp_Add(l, r) -> <addi> (v1, v2)
+    where
+      v1 := <dnx-compile-term; is-int> l;
+      v2 := <dnx-compile-term; is-int> r
+  
+  dnx-compile-term: DNXTermOp_Add(l, r) -> <fail>
+    with
+      <debug(!"[Dynamix] ")> $[Cannot add [<dnx-compile-term; strip-annos; write-to-string> l] to [<dnx-compile-term; strip-annos; write-to-string> r]]
+      
+  dnx-compile-term: DNXTermOp_Sub(l, r) -> <subti> (v1, v2)
+    where
+      v1 := <dnx-compile-term; is-int> l;
+      v2 := <dnx-compile-term; is-int> r
+
+  dnx-compile-term: DNXTermOp_Sub(l, r) -> <fail>
+    with
+      <debug(!"[Dynamix] ")> $[Cannot subtract [<dnx-compile-term; strip-annos; write-to-string> r] from [<dnx-compile-term; strip-annos; write-to-string> l]]
+      
+  dnx-compile-term: e -> e where <get-constructor; not(string-starts-with(|"DNXTerm"))> e
   
 rules
   // Given a list of tuples of a list of instructions and an expression, 
