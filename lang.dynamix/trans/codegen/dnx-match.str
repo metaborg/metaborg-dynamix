@@ -69,7 +69,7 @@ rules
     where
       <debug(!"int: ")> (arg, val);
       <is-int> arg;      
-      <equal> <debug> (<strip-annos> arg, <string-to-int> val)
+      <equal> (<strip-annos> arg, <string-to-int> val)
   
   // Match a list and al elements in the list
   dnx-match-arg: (arg, DNXTerm_List(elems)) -> binds
