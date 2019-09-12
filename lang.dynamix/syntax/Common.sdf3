@@ -54,13 +54,15 @@ lexical syntax
   PRIMNAME = "print"
   PRIMNAME = "printc"
   PRIMNAME = "jumpz"
-  PRIMNAME = "callCF"
-  PRIMNAME = "returnCF"
+  PRIMNAME = "callC"
   PRIMNAME = "curCF"
+  PRIMNAME = "curC"
   PRIMNAME = "newCF"
-  PRIMNAME = "getCF"
-  PRIMNAME = "setCF"
+  PRIMNAME = "newC"
+  PRIMNAME = "getC"
+  PRIMNAME = "setC"
   PRIMNAME = "unpackCF"
+  PRIMNAME = "unpackC"
   
   PRIMNAME = "int"
   PRIMNAME = "char"
@@ -79,28 +81,23 @@ lexical syntax
   
   PRIMNAME = "is-int"
   PRIMNAME = "is-frame"
-  PRIMNAME = "is-closure"
+  PRIMNAME = "is-cf"
   PRIMNAME = "is-continuation"
-  
-  PRIMNAME = "mk-closure"
-  PRIMNAME = "closure-to-CF"
-  
+    
   PRIMNAME = "new"
   PRIMNAME = "size"
   PRIMNAME = "link"
   PRIMNAME = "set"
   PRIMNAME = "mkcur"
-  PRIMNAME = "cur"
+  PRIMNAME = "getcur"
   PRIMNAME = "get"
   PRIMNAME = "is-empty"
   
   PRIMNAME = "resolve"
-  PRIMNAME = "resolve-label"
   PRIMNAME = "resolve-scope"
-  PRIMNAME = "continue"
+  PRIMNAME = "nop"
   PRIMNAME = "length"
   PRIMNAME = "associate-index"
-  PRIMNAME = "associate-label"
   
 
   RULENAME = PRIMNAME        {reject}  

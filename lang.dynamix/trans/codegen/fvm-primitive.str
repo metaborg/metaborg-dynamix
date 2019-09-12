@@ -66,11 +66,14 @@ rules
 
 
 rules // Expressions
-  dnx-primitive-call(|p): ("pop", [e1])           -> ([], RGR_ContRGet(e1))
-  dnx-primitive-call(|p): ("curCF", [])           -> ([], RGR_ContThis())
-  dnx-primitive-call(|p): ("newCF", [e1, e2, e3]) -> ([], RGR_ContNew(e1, e2, e3))
+  dnx-primitive-call(|p): ("pop", [e1])           -> ([], RGR_CFRGet(e1))
+  dnx-primitive-call(|p): ("curC", [lbl])         -> ([], RGR_ContCur(lbl))
+  dnx-primitive-call(|p): ("newC", [e1, e2, e3])  -> ([], RGR_ContNew(e1, e2, e3))
+  dnx-primitive-call(|p): ("curCF", [])           -> ([], RGR_CFThis())
+  dnx-primitive-call(|p): ("newCF", [e1, e2, e3]) -> ([], RGR_CFNew(e1, e2, e3))
   dnx-primitive-call(|p): ("getCF", [e1, e2])     -> ([], RGR_ContGet(e1, e2))
-  dnx-primitive-call(|p): ("unpackCF", [e1])      -> ([], RGR_ContUnpack(e1))
+  dnx-primitive-call(|p): ("unpackC", [e1])       -> ([], RGR_ContUnpack(e1))
+  dnx-primitive-call(|p): ("unpackCF", [e1])      -> ([], RGR_CFUnpack(e1))
   
   dnx-primitive-call(|p): ("char", [c])      -> ([], RGR_CharLoad(c))
   dnx-primitive-call(|p): ("int",  [n])      -> ([], RGR_ILoad(n))                 where <is-string> n
@@ -90,7 +93,7 @@ rules // Expressions
   
   dnx-primitive-call(|p): ("is-int",   [e1]) -> ([], RGR_IsInt(e1))
   dnx-primitive-call(|p): ("is-frame", [e1]) -> ([], RGR_IsFrame(e1))
-//  dnx-primitive-call(|p): ("is-closure", [e1]) -> ([], RGR_IsClosure(e1))
+  dnx-primitive-call(|p): ("is-CF", [e1]) -> ([], RGR_IsCF(e1))
   dnx-primitive-call(|p): ("is-continuation", [e1]) -> ([], RGR_IsCont(e1))
   
   dnx-primitive-call(|p): ("new",  [e1]) -> ([], RGR_New(e1))
@@ -99,9 +102,6 @@ rules // Expressions
   dnx-primitive-call(|p): ("get",  [e1, e2]) -> ([], RGR_Get(e1, e2))
   dnx-primitive-call(|p): ("is-empty", [e1, e2]) -> ([], RGR_IsEmpty(e1, e2))
   dnx-primitive-call(|p): ("cur", []) -> ([], RGR_ScopeGetCurrent())
-  
-  dnx-primitive-call(|p): ("mk-closure", [frame, block, slots]) -> ([], RGR_ClosNew(frame, block, slots))
-  dnx-primitive-call(|p): ("closure-to-CF", [clos]) -> ([], RGR_ClosToCont(clos))
   
 rules // Statements
   // Convert a statement to a list of instructions and expression tuple
@@ -114,7 +114,7 @@ rules // Statements
   dnx-primitive-call(|p): ("set", [e1, e2, e3])   -> <stmt> [RGR_Set(e1, <fvm-convert-path> e2, e3)] where <is-list> e2
   dnx-primitive-call(|p): ("set", [e1, e2, e3])   -> <stmt> [RGR_Set(e1, e2, e3)]
   dnx-primitive-call(|p): ("empty", [e1, e2])     -> <stmt> [RGR_Empty(e1, e2)]
-  dnx-primitive-call(|p): ("push", [e1, e2])      -> <stmt> [RGR_ContTransfer([e1], e2)]
+  dnx-primitive-call(|p): ("push", [e1, e2])      -> <stmt> [RGR_CFTransfer([e1], e2)]
   dnx-primitive-call(|p): ("setCF", [e1, e2, e3]) -> <stmt> [RGR_ContSet(e1, e2, e3)]
   dnx-primitive-call(|p): ("mkcur", [e1])         -> <stmt> [RGR_ScopeSetCurrent(e1)]
   dnx-primitive-call(|p): ("print", [e1])         -> <stmt> [RGR_Print(e1)]
@@ -122,6 +122,8 @@ rules // Statements
   
   dnx-primitive-call(|p): ("jump", [e1]) -> <control> RGR_Jump(e1)
   dnx-primitive-call(|p): ("jumpz", [e1, e2, e3]) -> <control> RGR_JumpZ(e1, e2, e3)
-  dnx-primitive-call(|p): ("callCF", [e1]) -> ([RGR_ContCall(e1, label), label], None()) with label := <newname; dnx-primitive-autolabel> "l_" 
-  dnx-primitive-call(|p): ("returnCF", [e1]) -> <control> RGR_ContReturn(e1)
+  dnx-primitive-call(|p): ("callC", [e1]) -> ([RGR_ContCall(e1)], None())
+  dnx-primitive-call(|p): ("callC", [e1|t]) -> ([RGR_ContCallWith(e1, t)], None())
+  dnx-primitive-call(|p): ("callCF", [e1]) -> ([RGR_CFCall(e1, label), label], None()) with label := <newname; dnx-primitive-autolabel> "l_" 
+  dnx-primitive-call(|p): ("returnCF", [e1]) -> <control> RGR_CFReturn(e1)
  

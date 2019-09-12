@@ -52,7 +52,7 @@ context-free syntax
  
  DefParamType.ParamType = <<{Type "->"}*> -\> <Type>>
  Definition.TypeDef = <<DEFNAME><DefParamTypeList?>:: <{Type "->"}*> -\> <Type>>
- Block.Block = <   
+ Block.Block = <  
   <{Instruction ";"}+>
  >
  

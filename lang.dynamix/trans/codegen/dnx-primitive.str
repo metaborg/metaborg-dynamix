@@ -60,42 +60,26 @@ rules // Generic primimitive operations whose implementation is not dependent on
 
 
 
-  // Associate a code block label with the given occurence
-  dnx-primitive-call(|p): ("associate-label", [lbl, term, ns]) -> ([], None() ) 
-    where <is-string> ns
-    with <dnx-primitive-associate-(|p, "lbl")> (lbl, term, ns)
-  dnx-primitive-call(|p): ("associate-label", [lbl, term, ns]) -> ([], DNX_Error(msg) ) 
-    with
-      msg := <debug(!"[Dynamix] ")> $[associate-index: Exprected a string, got [<strip-annos; write-to-string> ns]]
-    
-  // Continue does nothing.
+  // Nop does nothing.
   // It only exists to allow empty cases in maps/folds without the typesystem complaining
-  dnx-primitive-call(|p): ("continue", []) -> ([], None())
-  
-  // If the label is already defined, we just resolve it and get the value.
-  // If it is a forward reference, we create a new one here. (On assoc-site we then get it instead of set it)
-  dnx-primitive-call(|p): ("resolve-label", [name, ns]) -> ([], label)
-    where
-      a       := <nabl2-get-ast-analysis> name;
-      ref-occ := <nabl2-mk-occurrence(|ns)> name;
-      TermIndex(termfile, termidx) := <nabl2-get-resolved-name(|a); Fst; nabl2-get-occurrence-index> ref-occ;
-      label := <dnx-primitive-resolve-label(|p)> (termfile, termidx)
-      
-  dnx-primitive-call(|p): ("resolve-label", [name, ns]) -> ([], DNX_Error(msg))
-    with
-      msg := <debug(!"[Dynamix] ")> $[Cannot resolve the label of [<strip-annos; write-to-string> name] in namespace [<strip-annos; write-to-string> ns]]
-  
+  dnx-primitive-call(|p): ("nop", []) -> ([], None())  
   
 rules
   // Get a label from the hashtable.
-  // If it does not exist, it must be a forward reference so we add a temporary label that we need to fix later
-  dnx-primitive-resolve-label(|p): (file, idx) -> label
+  // If it does not exist, it must be a forward reference so we add a temporary label that we need to fix later.
+  // Also we need to check if somebody already created the temporary label
+  dnx-primitive-resolve-label(|p): (file, idx) -> label		// Label exists
     where
       key := $[lbl_[file]_[idx]];
       label := <hashtable-get(|key)> p
       
-  dnx-primitive-resolve-label(|p): (file, idx) -> label
+  dnx-primitive-resolve-label(|p): (file, idx) -> label		// Temporary exists
     where
+      key := $[tmp_lbl_[file]_[idx]];
+      label := <hashtable-get(|key)> p
+      
+  dnx-primitive-resolve-label(|p): (file, idx) -> label		// Temporary does not exist
+    with
       key := $[tmp_lbl_[file]_[idx]];
       label := <newname; dnx-primitive-autolabel> "tmp_l_";
       <hashtable-put(|key, label)> p
