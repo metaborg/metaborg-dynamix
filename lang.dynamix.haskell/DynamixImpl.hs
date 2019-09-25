@@ -81,7 +81,7 @@ data Cmd :: * -> * where
   SetRV   :: Show a => CFrame -> Reg a -> a -> Cmd ()
   GetRV   :: CFrame -> Reg a -> Cmd a
   NewCF   :: Code Val -> CFrame -> Frame -> Cmd CFrame
-  CurPC   :: Cmd Val
+  LabelC  :: ((Val -> Code Val) -> Code Val) -> Cmd Val
 
   -- failure fragment
   Fail    :: String -> Cmd a
@@ -103,7 +103,7 @@ instance Show (Cmd a) where
   show (SetRV cf r a) = "SetRV " ++ show cf ++ " " ++ show r ++ " " ++ show a
   show (GetRV cf r) = "GetRV " ++ show cf ++ " " ++ show r
   show (NewCF cd cf f) = "NewCF " ++ show cd ++ " " ++ show cf ++ " " ++ show f
-  show CurPC = "CurPC"
+  show (LabelC _) = "LabelC"
   show (Fail s) = "Fail " ++ s
 
 -----------------------
@@ -134,7 +134,7 @@ instance MonadControlFrames Code where
   setrv cf r a  = liftF (SetRV cf r a)
   getrv cf r    = liftF (GetRV cf r)
   newcf cd cf f = liftF (NewCF cd cf f)
-  curpc         = liftF CurPC
+  labelc k      = liftF (LabelC k)
 
 instance MonadFail Code where
   fail s = liftF (Fail s)
@@ -390,8 +390,8 @@ step (Step (JumpZ v c1 c2) _) = do
 step (Step CurCF k) = do
   c <- getCurCF
   return (Cont (k c))
-step (Step CurPC k) =
-  return (Cont (k (CodeV (k UnitV))))
+step (Step (LabelC k') k) =
+  return (Cont (k' k))
 step (Step (Call cf) k) = do
   return (Ctrl (k ()) cf)
 step (Step (SetCV cf cs x) k) = do
@@ -434,6 +434,9 @@ steps c = trace "stepping ..." $ do
       steps cd'
     Stuck s ->
       return (Right s)
+
+ev :: Expr -> Code Val
+ev = eval
 
 interp :: Expr -> M (Either Val String)
 interp e = do
