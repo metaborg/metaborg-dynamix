@@ -29,14 +29,16 @@ data Name = Pos Int
           deriving Show
 
 data Value m where
-  NumV :: Int -> Value m
-  FrameV :: Frame -> Value m
-  CodeV :: m (Value m) -> Value m
+  UnitV   :: Value m
+  NumV    :: Int -> Value m
+  FrameV  :: Frame -> Value m
+  CodeV   :: m (Value m) -> Value m
 
 instance Show (Value m) where
-  show (NumV n) = show n
+  show UnitV      = "unit"
+  show (NumV n)   = show n
   show (FrameV f) = "#" ++ show f
-  show (CodeV _) = "<code>"
+  show (CodeV _)  = "<code>"
   
 data Path = PStep Label Path
           | PPos Name
@@ -97,7 +99,6 @@ class Monad m => MonadControlFrames m where
   jumpz   :: Value m -> m (Value m) -> m (Value m) -> m (Value m)
 
   curcf   :: m CFrame
---  mkcurcf :: CFrame -> m ()
 
   call    :: CFrame -> m ()
 
@@ -108,6 +109,8 @@ class Monad m => MonadControlFrames m where
   getrv   :: CFrame -> Register m a -> m a
 
   newcf   :: m (Value m) -> CFrame -> Frame -> m CFrame
+
+  curpc   :: m (Value m)
 
 
 ------------------
