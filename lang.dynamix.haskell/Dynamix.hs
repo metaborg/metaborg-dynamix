@@ -96,8 +96,6 @@ class Monad m => MonadHeapFrames m where
   getl :: [Label] -> m Frame
 
 class Monad m => MonadControlFrames m where
-  quote   :: m a -> m (m a)
-
   jumpz   :: Value m -> m (Value m) -> m (Value m) -> m (Value m)
 
   curcf   :: m CFrame
@@ -136,9 +134,12 @@ returnTo v cf = do
   call cf
   Fail.fail "Unreachable code"
 
-jump :: (MonadControlFrames m,
-         MonadFail m) => m (Value m) -> m (Value m)
+jump :: MonadControlFrames m => m (Value m) -> m (Value m)
 jump k = jumpz (NumV 0) k k
+
+quote :: MonadControlFrames m => m (Value m) -> m (m (Value m))
+quote m = return m
+
 
 -------------------
 --- interpreter ---

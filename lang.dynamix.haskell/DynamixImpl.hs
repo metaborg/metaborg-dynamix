@@ -72,7 +72,6 @@ data Cmd :: * -> * where
   GetL :: [Label] -> Cmd Frame
 
   -- control frame fragment
-  Quote   :: Code a -> Cmd (Code a)
   JumpZ   :: Val -> Code Val -> Code Val -> Cmd Val
   CurCF   :: Cmd CFrame
   Call    :: CFrame -> Cmd ()
@@ -94,7 +93,6 @@ instance Show (Cmd a) where
   show (GetV f n) = "GetV " ++ show f ++ " " ++ show n
   show (New i) = "New " ++ show i
   show (GetL ls) = "GetL " ++ show ls
-  show (Quote c) = "Quote " ++ show c
   show (JumpZ v c1 c2) = "JumpZ " ++ show v ++ " " ++ show c1 ++ " " ++ show c2
   show CurCF = "CurCF"
   show (Call cf) = "Call " ++ show cf
@@ -124,7 +122,6 @@ instance MonadHeapFrames Code where
   getl ls     = liftF (GetL ls)
 
 instance MonadControlFrames Code where
-  quote c       = liftF (Quote c)
   jumpz v c1 c2 = liftF (JumpZ v c1 c2)
   curcf         = liftF  CurCF
   -- mkcurcf cf    = liftF (MkCurCF cf)
@@ -377,8 +374,6 @@ step (Step (GetL ls) k) = do
   f  <- getCurDF
   f' <- followLinks f ls
   return (Cont (k f'))
-step (Step (Quote c) k) = 
-  return (Cont (k c))
 step (Step (JumpZ v c1 c2) _) = do
   case v of
     NumV 0 ->
