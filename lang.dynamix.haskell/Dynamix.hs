@@ -29,14 +29,18 @@ data Name = Pos Int
           deriving Show
 
 data Value m where
-  NumV :: Int -> Value m
-  FrameV :: Frame -> Value m
-  CodeV :: m (Value m) -> Value m
+  UnitV   :: Value m
+  NumV    :: Int -> Value m
+  FrameV  :: Frame -> Value m
+  CodeV   :: m (Value m) -> Value m
+  ContV   :: (Value m -> m (Value m)) -> Value m
 
 instance Show (Value m) where
-  show (NumV n) = show n
+  show UnitV      = "unit"
+  show (NumV n)   = show n
   show (FrameV f) = "#" ++ show f
-  show (CodeV _) = "<code>"
+  show (CodeV _)  = "<code>"
+  show (ContV _)  = "<cont>"
   
 data Path = PStep Label Path
           | PPos Name
@@ -97,7 +101,6 @@ class Monad m => MonadControlFrames m where
   jumpz   :: Value m -> m (Value m) -> m (Value m) -> m (Value m)
 
   curcf   :: m CFrame
---  mkcurcf :: CFrame -> m ()
 
   call    :: CFrame -> m ()
 
@@ -108,6 +111,8 @@ class Monad m => MonadControlFrames m where
   getrv   :: CFrame -> Register m a -> m a
 
   newcf   :: m (Value m) -> CFrame -> Frame -> m CFrame
+
+  labelc  :: ((Value m -> m (Value m)) -> m (Value m)) -> m (Value m)
 
 
 ------------------
@@ -130,6 +135,10 @@ returnTo v cf = do
   setrv cf CallRet v
   call cf
   Fail.fail "Unreachable code"
+
+jump :: (MonadControlFrames m,
+         MonadFail m) => m (Value m) -> m (Value m)
+jump k = jumpz (NumV 0) k k
 
 -------------------
 --- interpreter ---
@@ -157,11 +166,14 @@ eval (Let x e1 e2) = do
   v2 <- eval e2
   mkcur fcur
   return v2
-eval (If e1 e2 e3) = do
-  v1 <- eval e1
-  c2 <- quote (eval e2)
-  c3 <- quote (eval e3)
-  jumpz v1 c2 c3
+eval (If e1 e2 e3) =
+  labelc (\ k -> do
+    v1 <- eval e1
+    c2 <- quote (do v <- eval e2
+                    jump (k v))
+    c3 <- quote (do v <- eval e3
+                    jump (k v))
+    jumpz v1 c2 c3)
 eval (Lam x e) = do
   c <- quote (do
          f     <- new 1

@@ -75,13 +75,13 @@ data Cmd :: * -> * where
   Quote   :: Code a -> Cmd (Code a)
   JumpZ   :: Val -> Code Val -> Code Val -> Cmd Val
   CurCF   :: Cmd CFrame
-  -- MkCurCF :: CFrame -> Cmd ()
   Call    :: CFrame -> Cmd ()
   SetCV   :: Show a => CFrame -> ControlSlot a -> a -> Cmd ()
   GetCV   :: CFrame -> ControlSlot a -> Cmd a
   SetRV   :: Show a => CFrame -> Reg a -> a -> Cmd ()
   GetRV   :: CFrame -> Reg a -> Cmd a
   NewCF   :: Code Val -> CFrame -> Frame -> Cmd CFrame
+  LabelC  :: ((Val -> Code Val) -> Code Val) -> Cmd Val
 
   -- failure fragment
   Fail    :: String -> Cmd a
@@ -103,6 +103,7 @@ instance Show (Cmd a) where
   show (SetRV cf r a) = "SetRV " ++ show cf ++ " " ++ show r ++ " " ++ show a
   show (GetRV cf r) = "GetRV " ++ show cf ++ " " ++ show r
   show (NewCF cd cf f) = "NewCF " ++ show cd ++ " " ++ show cf ++ " " ++ show f
+  show (LabelC _) = "LabelC"
   show (Fail s) = "Fail " ++ s
 
 -----------------------
@@ -133,6 +134,7 @@ instance MonadControlFrames Code where
   setrv cf r a  = liftF (SetRV cf r a)
   getrv cf r    = liftF (GetRV cf r)
   newcf cd cf f = liftF (NewCF cd cf f)
+  labelc k      = liftF (LabelC k)
 
 instance MonadFail Code where
   fail s = liftF (Fail s)
@@ -162,13 +164,12 @@ data ControlFrame = CF { pc   :: Code Val
 type Stack = [ControlFrame]
 
 
-
 -----------
 --- aux ---
 -----------
 
 update' :: Show a => [a] -> Int -> a -> [a]
-update' [] i x = error $ "bad update of " ++ show i ++ " with " ++ show x
+update' []       i x = error $ "bad update of " ++ show i ++ " with " ++ show x
 update' (_ : xs) 0 x = x : xs
 update' (x : xs) i y = x : update' xs (i - 1) y
 
@@ -389,9 +390,8 @@ step (Step (JumpZ v c1 c2) _) = do
 step (Step CurCF k) = do
   c <- getCurCF
   return (Cont (k c))
--- step (Step (MkCurCF c) k) = do
---   setCurCF c
---   return (Cont (k ()))
+step (Step (LabelC k') k) =
+  return (Cont (k' k))
 step (Step (Call cf) k) = do
   return (Ctrl (k ()) cf)
 step (Step (SetCV cf cs x) k) = do
@@ -434,6 +434,9 @@ steps c = trace "stepping ..." $ do
       steps cd'
     Stuck s ->
       return (Right s)
+
+ev :: Expr -> Code Val
+ev = eval
 
 interp :: Expr -> M (Either Val String)
 interp e = do
