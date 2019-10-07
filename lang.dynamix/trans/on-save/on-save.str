@@ -30,7 +30,7 @@ rules
    with
       filename := $[src-gen/dynamix/[name].dnxc]
     ; full_name := $[[project-path]/[filename]]
-    ; old := <ReadFromFile> full_name
+    ; old := <(file-exists; ReadFromFile) <+ !None()> full_name
     ; dnx-log(|"INFO", $<Skipping compilation of '<filename>' as it has errors>)
   
 rules // Rules for compiling a Dynamix module to the stored format
