@@ -67,6 +67,7 @@ rules
 
 
 rules // Expressions
+  dnx-primitive-call(|p): ("null", [])            -> ([], RGR_NLoad())
   dnx-primitive-call(|p): ("pop", [])             -> ([], RGR_CFRGet())
   dnx-primitive-call(|p): ("curC", [lbl])         -> ([], RGR_ContCur(lbl))
   dnx-primitive-call(|p): ("newC", [e1, e2, e3])  -> ([], RGR_ContNew(e1, e2, e3))
@@ -92,6 +93,7 @@ rules // Expressions
   dnx-primitive-call(|p): ("ixor", [e1, e2]) -> ([], RGR_IXor(e1, e2))
   dnx-primitive-call(|p): ("iand", [e1, e2]) -> ([], RGR_IAnd(e1, e2))
   
+  dnx-primitive-call(|p): ("is-null",  [e1]) -> ([], RGR_IsNull(e1))
   dnx-primitive-call(|p): ("is-int",   [e1]) -> ([], RGR_IsInt(e1))
   dnx-primitive-call(|p): ("is-frame", [e1]) -> ([], RGR_IsFrame(e1))
   dnx-primitive-call(|p): ("is-CF", [e1]) -> ([], RGR_IsCF(e1))

@@ -48,6 +48,7 @@ lexical syntax
   
   ID = "rules" {reject}
   
+  PRIMNAME = "null"
   PRIMNAME = "push"
   PRIMNAME = "pop"
   PRIMNAME = "print"
