@@ -21,7 +21,7 @@ rules
       <map(dnx-store-def)> defs;
       blocks := <new-hashtable>;
       properties := <new-hashtable>;
-      DNX_Header(_, _, namespaces) := header;
+      DNX_Header(_, _, namespaces, _) := header;
 
       // This is not nice, but it works
       <hashtable-put(|"namespaces", namespaces)> properties;
@@ -31,14 +31,15 @@ rules
       compiled_header := <dnx-primitive-mk-header> header;
       
       // Get all the quoted blocks and make them proper blocks
-      blocks_instr := <hashtable-getlist; map((\ (label, body) -> [(label, <dnx-primitive-autosize>) | body] \)); concat> blocks;
+      blocks_instr := <hashtable-getlist; map((\ (label, body) -> [label | body] \)); concat> blocks;
       body2 := <conc> (instr, blocks_instr);
       
       // Some labels are still unbound. Replace these temporary binds with the actual bind
       tmp_labels := <hashtable-getlist; filter( 
-          (\ (key, val) -> (val, bound_val) 
+          (\ (key, val) -> <debug> (val, bound_val) 
             where 
-              bound_key := <string-starts-with(|"tmp_lbl_"); string-replace(|"tmp_lbl_", "lbl_")> key; 
+              bound_key := <string-starts-with(|"tmp_lbl_"); string-replace(|"tmp_lbl_", "lbl_")> key
+            with
               bound_val := <hashtable-get(|bound_key)> properties
           \) )> properties;
       body3 := <foldl(replace-all-in)> (tmp_labels, body2); 

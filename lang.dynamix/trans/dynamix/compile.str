@@ -69,7 +69,7 @@ rules
     with
       compiled_spec := <dnx-load-compiled-spec>
     ; prog := <dnx-compile> (ast, compiled_spec)
-    ; result := <((?( (header, instr) ); !(header, [(<dnx-primitive-mk-label> "MAIN", FVM_AutoSize()) | instr]) ) <+ id); fvm-compile-flat>
+    ; result := <((?( (header, instr) ); !(header, [<dnx-primitive-mk-label> "MAIN"| instr]) ) <+ id); fvm-compile-flat>
   
   // Convert the compile output to either a valid FVM AST or a string of the encountered errors
   fvm-compile-flat: prog@(_, _) -> <rgr-from-flat; rgr-assign-registers> prog

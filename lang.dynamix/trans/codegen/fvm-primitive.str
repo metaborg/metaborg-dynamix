@@ -25,9 +25,6 @@ rules
   // Create a fresh code block label
   dnx-primitive-autolabel: name -> FVM_AutoLabel(name)
   
-  // Create an annotation to infer CF size
-  dnx-primitive-autosize: _ -> FVM_AutoSize()
-  
   // Check if the term is a register reference
   dnx-primitive-is-var: RGR_AutoVar(name) -> name
   
@@ -56,7 +53,11 @@ rules
   dnx-primitive-mk-label: name -> FVM_Label(name)
   
   // Create a header object
-  dnx-primitive-mk-header: DNX_Header(links, continuations, _) -> FVM_Header(<conc> (<map(dnx-primitive-mk-header-link)> links, <map(dnx-primitive-mk-header-cont)> continuations))
+  dnx-primitive-mk-header: DNX_Header(links, continuations, _, size) -> FVM_Header(<concat> [
+  		<map(dnx-primitive-mk-header-link)> links, 
+  		<map(dnx-primitive-mk-header-cont)> continuations, 
+  		[FVM_InitSize(<int-to-string <+ !"0"> size)]
+  	])
   
   // Create a link label to use in a header
   dnx-primitive-mk-header-link: (idx, label) -> FVM_LinkAlias(FVM_Link(label), <int-to-string> idx)
@@ -66,12 +67,12 @@ rules
 
 
 rules // Expressions
-  dnx-primitive-call(|p): ("pop", [e1])           -> ([], RGR_CFRGet(e1))
+  dnx-primitive-call(|p): ("pop", [])             -> ([], RGR_CFRGet())
   dnx-primitive-call(|p): ("curC", [lbl])         -> ([], RGR_ContCur(lbl))
   dnx-primitive-call(|p): ("newC", [e1, e2, e3])  -> ([], RGR_ContNew(e1, e2, e3))
   dnx-primitive-call(|p): ("curCF", [])           -> ([], RGR_CFThis())
   dnx-primitive-call(|p): ("newCF", [e1, e2, e3]) -> ([], RGR_CFNew(e1, e2, e3))
-  dnx-primitive-call(|p): ("getCF", [e1, e2])     -> ([], RGR_ContGet(e1, e2))
+  dnx-primitive-call(|p): ("getC", [e1, e2])      -> ([], RGR_ContGet(e1, e2))
   dnx-primitive-call(|p): ("unpackC", [e1])       -> ([], RGR_ContUnpack(e1))
   dnx-primitive-call(|p): ("unpackCF", [e1])      -> ([], RGR_CFUnpack(e1))
   
@@ -100,7 +101,6 @@ rules // Expressions
   dnx-primitive-call(|p): ("size", [e1]) -> ([], RGR_FSize(e1))
   dnx-primitive-call(|p): ("get",  [e1, e2]) -> ([], RGR_Get(e1, <fvm-convert-path> e2)) where <is-list> e2
   dnx-primitive-call(|p): ("get",  [e1, e2]) -> ([], RGR_Get(e1, e2))
-  dnx-primitive-call(|p): ("is-empty", [e1, e2]) -> ([], RGR_IsEmpty(e1, e2))
   dnx-primitive-call(|p): ("cur", []) -> ([], RGR_ScopeGetCurrent())
   
 rules // Statements
@@ -113,9 +113,8 @@ rules // Statements
   dnx-primitive-call(|p): ("link", [e1, e2, e3])  -> <stmt> [RGR_Link(e1, <try(fvm-convert-path)> e2, e3)]
   dnx-primitive-call(|p): ("set", [e1, e2, e3])   -> <stmt> [RGR_Set(e1, <fvm-convert-path> e2, e3)] where <is-list> e2
   dnx-primitive-call(|p): ("set", [e1, e2, e3])   -> <stmt> [RGR_Set(e1, e2, e3)]
-  dnx-primitive-call(|p): ("empty", [e1, e2])     -> <stmt> [RGR_Empty(e1, e2)]
-  dnx-primitive-call(|p): ("push", [e1, e2])      -> <stmt> [RGR_CFTransfer([e1], e2)]
-  dnx-primitive-call(|p): ("setCF", [e1, e2, e3]) -> <stmt> [RGR_ContSet(e1, e2, e3)]
+  dnx-primitive-call(|p): ("push", [e1])          -> <stmt> [RGR_CFTransfer([e1])]
+  dnx-primitive-call(|p): ("setC", [e1, e2, e3])  -> <stmt> [RGR_ContSet(e1, e2, e3)]
   dnx-primitive-call(|p): ("mkcur", [e1])         -> <stmt> [RGR_ScopeSetCurrent(e1)]
   dnx-primitive-call(|p): ("print", [e1])         -> <stmt> [RGR_Print(e1)]
   dnx-primitive-call(|p): ("printc", [e1])        -> <stmt> [RGR_PrintChar(e1)]
@@ -124,6 +123,6 @@ rules // Statements
   dnx-primitive-call(|p): ("jumpz", [e1, e2, e3]) -> <control> RGR_JumpZ(e1, e2, e3)
   dnx-primitive-call(|p): ("callC", [e1]) -> ([RGR_ContCall(e1)], None())
   dnx-primitive-call(|p): ("callC", [e1|t]) -> ([RGR_ContCallWith(e1, t)], None())
-  dnx-primitive-call(|p): ("callCF", [e1]) -> ([RGR_CFCall(e1, label), label], None()) with label := <newname; dnx-primitive-autolabel> "l_" 
+  dnx-primitive-call(|p): ("callCF", [e1, lbl]) -> ([RGR_CFCall(e1, lbl)], None()) 
   dnx-primitive-call(|p): ("returnCF", [e1]) -> <control> RGR_CFReturn(e1)
  

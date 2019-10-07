@@ -42,20 +42,10 @@ rules // Rules for compiling a Dynamix module to the stored format
       map := <new-hashtable>;
       <map(make-normDef(|map))> defs;
       grouped_defs := <hashtable-getlist; map( (\ (name, cases) -> DefGroup(name, <reverse> cases) \) )> map;
-      out := <strip-annos> NormModule(imports, <check-header> header, <resolve-binds-all> grouped_defs)
-  
-  // If a bind has the type ExpT, convert the bind to an expression bind
-  // All other binds are compile-time binds and these need to be treated differently
-  resolve-binds-all: term -> <topdown(try(resolve-binds))> term
-  resolve-binds: bind@DNX_Bind(var, val) -> DNX_BindExp(var, val)
-    where
-      a    := <nabl2-get-ast-analysis> var;
-      occ  := <nabl2-mk-occurrence(|"Var")> var;
-      type := <nabl2-get-type(|a)> occ;
-      <equal> ("ExpT", <get-constructor> type)
+      out := <strip-annos> NormModule(imports, <check-header> header, grouped_defs)
   
   // Check if the header is non-empty 
-  check-header: h@DNX_Header(a, b, c) -> h
+  check-header: h@DNX_Header(a, b, c, d) -> h
     where
       <gt> (<length> a, 0);
       <gt> (<length> b, 0);

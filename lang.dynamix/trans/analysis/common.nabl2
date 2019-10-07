@@ -12,7 +12,6 @@ signature
      TermOrExpT : Type
           
      ReturnT: Type
-     CodeT : Type
      
      ParamT: list(Type) * Type -> Type
      

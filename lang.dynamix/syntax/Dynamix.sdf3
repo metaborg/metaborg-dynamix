@@ -23,6 +23,8 @@ context-free syntax
  HeaderElem.Links = <link-labels
   <LinkAlias*>
 >
+ HeaderElem.InitSize = <init-size = <INTLEZ>
+>
  HeaderElem.Continuations = <continuations
   <ContinuationAlias*>
 >
@@ -48,17 +50,16 @@ context-free syntax
  >
  
  DefParam.Param = <[<{DEFNAME ", "}+>]>
- DefParamTypeList.ParamTypeList = <[<{DefParamType ", "}+>]>
+// DefParamTypeList.ParamTypeList = <[<{DefParamType ", "}+>]>
  
- DefParamType.ParamType = <<{Type "->"}*> -\> <Type>>
- Definition.TypeDef = <<DEFNAME><DefParamTypeList?>:: <{Type "->"}*> -\> <Type>>
+// DefParamType.ParamType = <<{Type "->"}*> -\> <Type>>
+// Definition.TypeDef = <<DEFNAME><DefParamTypeList?>:: <{Type "->"}*> -\> <Type>>
  Block.Block = <  
   <{Instruction ";"}+>
  >
  
  
  Type.Term = <ast>
- Type.Code = <code>
  Type.Exp = <val>
  Type.Instr = <instr>
  Type.Return = <return>
@@ -81,8 +82,13 @@ context-free syntax
  Pattern.DNXTermOp_Sub = <<Pattern> - <Pattern>> {left}
  
  Instruction.DNX_Bind = [
+  [ID] = [Exp]
+ ]
+ 
+ Instruction.DNX_BindExp = [
   [ID] <- [Exp]
  ]
+ 
  Instruction.DNX_Return = <return(<Exp>)> {prefer}
  Instruction.DNX_Exp = Exp
  Instruction.DNX_Label = LABEL {prefer}

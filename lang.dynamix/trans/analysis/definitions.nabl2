@@ -29,41 +29,49 @@ rules
 
    primNames[[ name@"jump" ^(s)]] :=
     Def{name} <- s,
-    Def{name} : DefT([], [CodeT()], InstrT()).
+    Def{name} : DefT([], [ExpT()], InstrT()).
     
   primNames[[ name@"jumpz" ^(s)]] :=
     Def{name} <- s,
-    Def{name} : DefT([], [ExpT(), CodeT(), CodeT()], InstrT()).
+    Def{name} : DefT([], [ExpT(), ExpT(), ExpT()], InstrT()).
 //    then <sub? CodeT(),
 //    then == else | error $[Both branches in the jump should have the same type].
     // m == then meet else, m != CodeT()
     // out_mult is mulOrd.lub of (e1_mult,e2_mult),
 
-  primNames[[ name@"callCF" ^(s)]] :=
+  primNames[[ name@"callC" ^(s)]] :=
     Def{name} <- s,
     Def{name} : DefT([], [ExpT()], InstrT()) !.
-
-  primNames[[ name@"returnCF" ^(s)]] :=
-    Def{name} <- s,
-    Def{name} : DefT([], [ExpT()], ReturnT()) !.
 
   primNames[[ name@"curCF" ^(s)]] :=
     Def{name} <- s,
     Def{name} : DefT([], [], ExpT()) !.
 
+  primNames[[ name@"curC" ^(s)]] :=
+    Def{name} <- s,
+    Def{name} : DefT([], [ExpT()], ExpT()) !.
+
   primNames[[ name@"newCF" ^(s)]] :=
     Def{name} <- s,
-    Def{name} : DefT([], [ExpT(), CodeT(), ExpT()], ExpT()) !.
+    Def{name} : DefT([], [ExpT(), ExpT(), ExpT()], ExpT()) !.
 
-  primNames[[ name@"getCF" ^(s)]] :=
+  primNames[[ name@"newC" ^(s)]] :=
+    Def{name} <- s,
+    Def{name} : DefT([], [ExpT(), ExpT(), ExpT()], ExpT()) !.
+
+  primNames[[ name@"getC" ^(s)]] :=
     Def{name} <- s,
     Def{name} : DefT([], [ExpT(), TermT()], ExpT()) !.
 
-  primNames[[ name@"setCF" ^(s)]] :=
+  primNames[[ name@"setC" ^(s)]] :=
     Def{name} <- s,
     Def{name} : DefT([], [ExpT(), TermT(), ExpT()], InstrT()) !.
 
   primNames[[ name@"unpackCF" ^(s)]] :=
+    Def{name} <- s,
+    Def{name} : DefT([], [ExpT()], ExpT()) !.
+
+  primNames[[ name@"unpackC" ^(s)]] :=
     Def{name} <- s,
     Def{name} : DefT([], [ExpT()], ExpT()) !.
 
@@ -133,7 +141,7 @@ rules
     Def{name} <- s,
     Def{name} : DefT([], [ExpT()], ExpT()) !.
 
-  primNames[[ name@"is-closure" ^(s)]] :=
+  primNames[[ name@"is-CF" ^(s)]] :=
     Def{name} <- s,
     Def{name} : DefT([], [ExpT()], ExpT()) !.
 
@@ -181,10 +189,6 @@ rules
   primNames[[ name@"resolve-scope" ^(s)]] :=
     Def{name} <- s,
     Def{name} : DefT([], [TermT(), TermT()], TermT()) !.
-
-  primNames[[ name@"resolve-label" ^(s)]] :=
-    Def{name} <- s,
-    Def{name} : DefT([], [TermT(), TermT()], CodeT()) !.
     
   primNames[[ name@"length" ^(s)]] :=
     Def{name} <- s,
@@ -194,20 +198,6 @@ rules
     Def{name} <- s,
     Def{name} : DefT([], [TermT(), TermT(), TermT()], InstrT()) !.
     
-  primNames[[ name@"associate-label" ^(s)]] :=
-    Def{name} <- s,
-    Def{name} : DefT([], [CodeT(), TermT(), TermT()], InstrT()) !.
-    
-  primNames[[ name@"continue" ^(s)]] :=
+  primNames[[ name@"nop" ^(s)]] :=
     Def{name} <- s,
     Def{name} : DefT([], [], InstrT()) !.
-    
-  primNames[[ name@"mk-closure" ^(s)]] :=
-    Def{name} <- s,
-    Def{name} : DefT([], [ExpT(), CodeT(), ExpT()], ExpT()) !.
-    
-  primNames[[ name@"closure-to-CF" ^(s)]] :=
-    Def{name} <- s,
-    Def{name} : DefT([], [ExpT()], ExpT()) !.
-    
-    

@@ -7,7 +7,7 @@ signature
   sorts S
   constructors    
     Module : STRING * [Import] * [STRING] * [Def] * [Def] * Header -> S
-    DNX_Header: [Label] * [Continuation] * [Namespace] -> S
+    DNX_Header: [Label] * [Continuation] * [Namespace] * INT -> S
     NormModule: [STRING] * [STRING] * [NormDef] -> S
     DefGroup: STRING * [DefCase] -> S
     DefCase: [Pattern] * [STRING] * [instruction] -> S
@@ -71,8 +71,20 @@ rules
   split-list3(s1, s2, s3): [h | t] -> (a, b, [h'|c]) where h' := <s3> h;
     (a, b, c) := <split-list3(s1, s2, s3)> t
     
+  split-list4(s1, s2, s3, s4): [] -> ([], [], [], [])
+  split-list4(s1, s2, s3, s4): [h | t] -> ([h'|a], b, c, d) where h' := <s1> h;
+    (a, b, c, d) := <split-list4(s1, s2, s3)> t
+  split-list4(s1, s2, s3, s4): [h | t] -> (a, [h'|b], c, d) where h' := <s2> h;
+    (a, b, c, d) := <split-list4(s1, s2, s3)> t
+  split-list4(s1, s2, s3, s4): [h | t] -> (a, b, [h'|c], d) where h' := <s3> h;
+    (a, b, c, d) := <split-list4(s1, s2, s3)> t
+  split-list4(s1, s2, s3, s4): [h | t] -> (a, b, c, [h'|d]) where h' := <s4> h;
+    (a, b, c, d) := <split-list4(s1, s2, s3, s4)> t
+  
+  
   // Same as the other split-list3, but the third list is a default for when s1 and s2 fail
   split-list3(s1, s2) = split-list3(s1, s2, id)
+  split-list4(s1, s2, s3) = split-list4(s1, s2, s3, id)
 
 rules
   // Replace all instances of key with value in body

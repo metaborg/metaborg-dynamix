@@ -46,15 +46,16 @@ lexical syntax
   
   // LINKNAMES and NAMESPACE cannot clash here
   
+  ID = "rules" {reject}
   
-  PRIMNAME = "jump"
-  PRIMNAME = "empty"
   PRIMNAME = "push"
   PRIMNAME = "pop"
   PRIMNAME = "print"
   PRIMNAME = "printc"
+  PRIMNAME = "jump"
   PRIMNAME = "jumpz"
   PRIMNAME = "callC"
+  PRIMNAME = "callCF"
   PRIMNAME = "curCF"
   PRIMNAME = "curC"
   PRIMNAME = "newCF"
@@ -89,9 +90,8 @@ lexical syntax
   PRIMNAME = "link"
   PRIMNAME = "set"
   PRIMNAME = "mkcur"
-  PRIMNAME = "getcur"
+  PRIMNAME = "cur"
   PRIMNAME = "get"
-  PRIMNAME = "is-empty"
   
   PRIMNAME = "resolve"
   PRIMNAME = "resolve-scope"

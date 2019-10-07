@@ -50,17 +50,14 @@ rules
   desugar-term: DNXTerm_String(string) -> DNXTerm_String(<unquote(id); unescape> string)
   desugar-term: DNXTerm_Int(val) -> DNXTerm_Int(<string-to-int> val)
   
-  // Desugar parameters of type signatures to lists
-  desugar-term: TypeDef(name, None(), argsty, retty) -> TypeDef(name, [], argsty, retty)
-  desugar-term: TypeDef(name, Some(ParamTypeList(params)), argsty, retty) -> TypeDef(name, params, argsty, retty)
-  
   // Split the definition types and implementations
   collect-def-types: Module(name, definitions) -> Module(name, imports, [], Defs(type_decls), Defs(def_decls), header)
     where
       (imports, header, defs) := <split-list3(?Imports(_), ?Header(_), ?Defs(_))> definitions;
       all_defs := <mapconcat((\ Defs(d) -> d \))> defs;
       def_decls  := <filter(?Def(_, _, _, _))> all_defs;
-      type_decls := <filter(?TypeDef(_, _, _, _))> all_defs
+//      type_decls := <filter(?TypeDef(_, _, _, _))> all_defs
+      type_decls := []
   
   // Collect the names of primitive operations
   // For modules other than the main module, this returns an empty list
@@ -75,8 +72,7 @@ rules
       		"mk-closure", "closure-to-CF", 
       		"new", "size", "link", "set", "mkcur", "cur", "get", "is-empty", 
       		"resolve", "resolve-label", "resolve-scope", 
-      		"continue", "length", 
-      		"associate-index", "associate-label"
+      		"continue", "length", "associate-index"
       ]
       
   collect-prim-names: Module(name, imports, _, types, defs, candl) -> Module(name, imports, [], types, defs, candl)
@@ -85,12 +81,12 @@ rules
   build-header: Module(name, imports, primitives, types, defs, header_elems) -> Module(name, imports', primitives, types, defs, header')
     where
       headers := <mapconcat(?Header(a); !a)> header_elems;
-      (links, continuations, namespaces) := <split-list3(?Links(_), ?Continuations(_), ?Namespaces(_))> headers;
+      (links, continuations, namespaces, init_size) := <split-list4(?Links(_), ?Continuations(_), ?Namespaces(_), (?InitSize(s); !s))> headers;
       imports'       := <mapconcat(?Imports(i); !i); map( (\ Import(i) -> i \) )> imports;
       links'         := <mapconcat(?Links(l); !l);         map-with-index( (\ (idx, LinkAlias(l))         -> <map( (\e -> (<dec>idx, e) \) )> l \) ); concat> links;
       continuations' := <mapconcat(?Continuations(c); !c); map-with-index( (\ (idx, ContinuationAlias(c)) -> <map( (\e -> (<dec>idx, e) \) )> c \) ); concat> continuations;
       namespaces'    := <mapconcat(?Namespaces(n); !n);    map( (\ NameSpace(ns) -> ns \) )> namespaces;
-      header' :=  DNX_Header(links', continuations', namespaces')
+      header' :=  DNX_Header(links', continuations', namespaces', <getfirst(string-to-int) <+ !None()> init_size)
     
       
       
