@@ -1,7 +1,7 @@
 module analysis/common
   
 signature
-    namespaces Def Var QVar Link Cont Module Label
+    namespaces Def Var Link Cont Module Label
     
     sorts Type
     constructors

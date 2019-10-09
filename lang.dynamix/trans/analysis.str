@@ -8,6 +8,7 @@ imports
   analysis/static-semantics
   signatures/Dynamix-sig
   codegen/dnx-common
+  lib
   
 rules
   desugar = collect-def-types; collect-prim-names; desugar-all; build-header
@@ -31,13 +32,10 @@ rules
     with filename := <guarantee-extension(|"analyzed.aterm")> path
        ; result   := selected
 
-rules
-  // Label expressions are just labels
-  desugar-term: DNX_LabelExp(lbl) -> DNX_Label(lbl)
-  
+rules  
   // Desugar the parameters of Definitions to be a (potentially empty) list  
-  desugar-term: Def(name, None(), args, body) -> Def(name, [], args, body)
-  desugar-term: Def(name, Some(Param(params)), args, body) -> Def(name, params, args, body)
+  desugar-term: Def(name, None(), args, k, Block(body)) -> Def(name, [], args, <split-filter2(?DNX_Bind(_, _) <+ ?DNX_DefineVar(_))> body, <desugar-k> k)
+  desugar-term: Def(name, Some(Param(params)), args, k, Block(body)) -> Def(name, params, args, <split-filter2(?DNX_Bind(_, _) <+ ?DNX_DefineVar(_))> body, <desugar-k> k)
   
   // Desugar parameters of calls to lists
   desugar-term: DNX_Call(name, None(), args) -> DNX_Call(name, [], args)
@@ -50,12 +48,17 @@ rules
   desugar-term: DNXTerm_String(string) -> DNXTerm_String(<unquote(id); unescape> string)
   desugar-term: DNXTerm_Int(val) -> DNXTerm_Int(<string-to-int> val)
   
+rules
+  desugar-k: None() -> None()
+  desugar-k: Some(NextLabel(name, None())) -> Some( (name, None()) )
+  desugar-k: Some(NextLabel(name, Some(NextWith(exp)))) -> Some( (name, Some(exp)) )
+  
   // Split the definition types and implementations
   collect-def-types: Module(name, definitions) -> Module(name, imports, [], Defs(type_decls), Defs(def_decls), header)
     where
       (imports, header, defs) := <split-list3(?Imports(_), ?Header(_), ?Defs(_))> definitions;
       all_defs := <mapconcat((\ Defs(d) -> d \))> defs;
-      def_decls  := <filter(?Def(_, _, _, _))> all_defs;
+      def_decls  := <filter(?Def(_, _, _, _, _))> all_defs;
 //      type_decls := <filter(?TypeDef(_, _, _, _))> all_defs
       type_decls := []
   
@@ -64,13 +67,13 @@ rules
   collect-prim-names: Module(name@"dynamic-semantics", imports, _, types, defs, candl) -> Module(name, imports, prim_names, types, defs, candl)
     where
       prim_names := [
-      		"jump", "empty", "push", "pop", "print", "printc", "jumpz", 
+      		"jump", "null", "push", "pop", "print", "printc", "jumpz", 
       		"callCF", "returnCF", "curCF", "newCF", "getCF", "setCF", "unpackCF", 
       		"int", "char", 
       		"ineg", "iadd", "imul", "isub", "idiv", "imod", "ieq", "ilt", "igt", "ior", "iand", "ixor", 
       		"is-int", "is-frame", "is-closure", "is-continuation", 
       		"mk-closure", "closure-to-CF", 
-      		"new", "size", "link", "set", "mkcur", "cur", "get", "is-empty", 
+      		"new", "size", "link", "set", "mkcur", "cur", "get", "is-null", 
       		"resolve", "resolve-label", "resolve-scope", 
       		"continue", "length", "associate-index"
       ]

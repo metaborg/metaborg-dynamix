@@ -20,16 +20,11 @@ rules
 
 
   // Quotes need to skip this step, as their scoping is completely different
-  // First we check which Splices we need to add to the bindings
-  // Then we construct a new set of bindings from these and evaluate the body with these new bindings.
-  // The final result is stored in the table of generated quoted blocks, and a label to the generated blocks is returned
+  // In fact, their compilation is delayed untill all compile-time binds are resolved.
+  // We just need to know the name of the label where this block will end up.
   dnx-compile-exp(|b, p, prop, blocks): DNX_Quote(Block(body)) -> ([], label)
     with
-      quoted_binds_needed := <collect-all( (\ DNX_Splice(DNX_Var(var)) -> var\) )> body;
-      quoted_binds := <map( (\ name -> ($[~_[name]], <lookup> (name, b)) \) )> quoted_binds_needed;
-      (out, None()) := <dnx-compile-body(|prop, b)> (quoted_binds, p, body);
-      label := <newname; dnx-primitive-autolabel> "l_";
-      <hashtable-put(|label, out)> blocks
+      label := <newname; dnx-primitive-autolabel> "ql_"
       
   // In the normal case we substitute all the variables with their actual values
   // After this we call the internal expression compilation rules

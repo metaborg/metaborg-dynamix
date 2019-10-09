@@ -53,10 +53,9 @@ rules // Rules for compiling a Dynamix module to the stored format
   check-header: _ -> None()
   
   // Normalize a definition to a definition case
-  make-normDef(|ht): d@Def(name, param, args, Block(body)) -> d
+  make-normDef(|ht): d@Def(name, param, args, body, k) -> d
     where
-      defcase := DefCase(args, param, body);
+      defcase := DefCase(args, param, body, k);
       cname := <strip-annos> name;
       <hashtable-push(|cname, defcase)> ht  // Note that this is push, not put
-   
   

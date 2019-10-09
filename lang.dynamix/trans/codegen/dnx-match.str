@@ -7,15 +7,17 @@ imports
   nabl2/runtime/analysis/-
   
   codegen/dnx-common
+  codegen/fvm-primitive
   
 rules
   // Match the given arguments with the definition case.
   // If it could not be matched, the strategy fails.
-  dnx-match-rule(|args, a_params): DefCase(arg_patterns, d_params, body) -> Some((binds, zipped_params, body))
+  dnx-match-rule(|args, a_params): DefCase(arg_patterns, d_params, body, k) -> Some((binds', zipped_params, body'))
     where
       zipped := <zip> (args, arg_patterns);
       zipped_params := <zip> (d_params, a_params);
-      binds := <mapconcat(dnx-match-arg)> zipped
+      binds := <mapconcat(dnx-match-arg)> zipped;
+      (binds', body') := <dnx-match-k(|binds, body)> k
 
 rules
   // Rules for matching definitioncase constructions.
@@ -67,7 +69,6 @@ rules
   // Match an integer
   dnx-match-arg: (arg, DNXTerm_Int(val)) -> []
     where
-      <debug(!"int: ")> (arg, val);
       <is-int> arg;      
       <equal> (<strip-annos> arg, <string-to-int> val)
   
@@ -93,6 +94,17 @@ rules
   dnx-match-arg: (arg, e) -> <fail> // No match found
 //  dnx-match-arg: (arg, e) -> <debug(!"Fail: "); fail> (arg, e)
   
+rules
+  dnx-match-k(|binds, body): None() -> (binds, body)
+  dnx-match-k(|binds, body): Some( (name, Some(exp)) ) -> ([(name, lbl) | binds], (ct, <conc> (rt, [lbl, DNX_Return(exp)])))
+    with
+      (ct, rt) := body;
+      lbl := <newname; dnx-primitive-autolabel> "K"
+  dnx-match-k(|binds, body): Some( (name, None()) ) -> ([(name, lbl) | binds], <conc> (body, [lbl]))
+    with
+      lbl := <newname; dnx-primitive-autolabel> "K"
+      
+      
 rules
   // Match arguments in a list with a second list.
   // This second list is at most as long as the first list.

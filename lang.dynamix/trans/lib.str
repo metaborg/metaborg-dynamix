@@ -1,0 +1,9 @@
+module lib
+rules
+  
+  split-filter2(s1) = split-filter2(s1, id)
+  split-filter2(s1, s2)= 
+  	(?[h | t]; 
+  		!t; split-filter2(s1, s2); ?(a, b); 
+		!h; ((s1; ?x; !([x|a], b)) <+ (s2; ?x; !(a,[x| b])))
+	) <+ (?[]; !([],[]))

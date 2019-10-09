@@ -36,7 +36,7 @@ rules
       
       // Some labels are still unbound. Replace these temporary binds with the actual bind
       tmp_labels := <hashtable-getlist; filter( 
-          (\ (key, val) -> <debug> (val, bound_val) 
+          (\ (key, val) -> (val, bound_val) 
             where 
               bound_key := <string-starts-with(|"tmp_lbl_"); string-replace(|"tmp_lbl_", "lbl_")> key
             with

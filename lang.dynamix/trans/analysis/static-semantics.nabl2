@@ -85,22 +85,33 @@ rules  // Imports
 //    Module{name} <=== s.
       
 rules // Definitions   
-  def[[Def(name, param, args, Block(instrs)) ^(s)]] :=
+  def[[Def(name, param, args, (ct_instrs, rt_instrs), k) ^(s)]] :=
     Def{name} -> s,
     new def_q_s, def_q_s ---> s,
     Map1(defParam) [[param ^(def_q_s)]],
     Map1(parterm) [[args ^(def_q_s)]],
     
     new def_s,   def_s   ---> def_q_s,
-    Fold1C(instr) [[instrs ^(def_s, def_q_s)]].
+    Map2(ctInstr)[[ct_instrs ^(def_s, def_q_s)]],
+    Fold1C(instr) [[rt_instrs ^(def_s, def_s', _)]],
+    kParam [[k ^(def_q_s, def_s')]].
   
   defParam [[name ^(s) ]] :=
     Def{name} <- s.
   
+  kParam [[ None() ^(s, s_e) ]].
+  
+  kParam [[ Some( (name, None()) ) ^(s, s_e) ]] :=
+    Var{name} <- s.
+  
+  kParam [[ Some( (name, Some(exp)) ) ^(s, s_e) ]] :=
+    Var{name} <- s,
+    exp [[ exp ^(s_e, s_e) ]].
+    
+    
 rules // Parameter terms
   parterm[[DNXTerm_Var(name) ^(s)]] :=
-    Var{name} <- s,
-    QVar{name} <- s.
+    Var{name} <- s.
     
   parterm[[DNXTerm_List(elems) ^(s)]] :=
     partermMap [[elems ^(s)]].
@@ -199,43 +210,46 @@ rules // Expression terms
     
 
 rules // Instructions
-  Fold1C(X) [[ [DNX_Return(arg)] ^(s, p) ]] :=
+  Fold1C(X) [[ [DNX_Return(arg)] ^(s, s', p) ]] :=
+    s == s',
     exp [[arg ^(s, p)]].
     
-  Fold1C(X) [[ [DNX_Return(arg) | tail] ^(s, p) ]] :=
+  Fold1C(X) [[ [DNX_Return(arg) | tail] ^(s, s', p) ]] :=
     exp [[arg ^(s, p)]],
-    Fold1C(instr) [[tail ^(s, p)]],
+    Fold1C(instr) [[tail ^(s, s', p)]],
     false | error $[Dead code] @tail.
     
-  Fold1C(X) [[ [h] ^(s, p) ]] :=
-    X[[ h ^(s, _, p)]].
+  Fold1C(X) [[ [h] ^(s, s', p) ]] :=
+    X[[ h ^(s, s', p)]].
     
-  Fold1C(X) [[ [h | t] ^(s, p) ]] :=
-    X[[ h ^(s, s', p) ]],
-    Fold1C(X)[[ t ^(s', p) ]].
+  Fold1C(X) [[ [h | t] ^(s, s', p) ]] :=
+    X[[ h ^(s, s2, p) ]],
+    Fold1C(X)[[ t ^(s2, s', p) ]].
   
+  ctInstr [[ DNX_DefineVar(name) ^(s, p) ]] :=
+    Var{name} <- s.
   
-  instr [[ DNX_Bind(name, exp) ^(s, def_s, p) ]] :=
+  ctInstr [[ DNX_Bind(name, exp) ^(s, p) ]] :=
     exp [[exp ^(s, p)]],
-    new def_s,
-    def_s ---> s,
-    Var{name} <- def_s.
+    Var{name} <- s,
+    distinct/name D(s)/Var | error $[Duplicate compile time binding] @NAMES.
   
   instr [[ DNX_BindExp(name, exp) ^(s, def_s, p) ]] :=
     exp [[exp ^(s, p)]],
     new def_s,
     def_s ---> s,
     Var{name} <- def_s.
+  
+  instr [[ DNX_BindExpSplice(name, exp) ^(s, s2, p) ]] :=
+    s == s2,
+    exp [[exp ^(s, p)]],
+    Var{name} -> p,
+    Var{name} |-> d | error $[[name] not declared] @ name.
     
   instr [[ DNX_Exp(exp) ^(s, s', p) ]] :=
     s == s', 
     exp[[exp ^(s, p)]].
-    
-  instr [[ DNX_Label(name) ^(s, s', p) ]] :=
-    s == s',
-    Label{name} <- p,
-    distinct/name D(s)/Label | error $[Label [name] can only be defined once] @NAMES.
-    
+     
 rules // Expressions  
   exp [[DNX_Link(lbl) ^(s, _) ]] :=
     Link{lbl} -> s,
@@ -245,10 +259,6 @@ rules // Expressions
     Cont{lbl} -> s,
     Cont{lbl} |-> d | error $[Continuation with label [lbl] is not defined].
     
-  exp [[DNX_Label(name) ^(s, _) ]] :=
-    Label{name} -> s,
-    Label{name} |-> d | error $[Label [name] not defined] @name.
-
   exp [[DNX_Var(name) ^(s, _) ]] :=
     Var{name} -> s,
     Var{name} |-> d | error $[Variable [name] not declared] @name.
@@ -260,11 +270,11 @@ rules // Expressions
      
   exp [[DNX_Quote(Block(instrs)) ^(s, p)]] :=
     new quote_s, quote_s ---> p,
-    Fold1C(instr) [[instrs ^(quote_s, quote_s)]].
+    Fold1C(instr) [[instrs ^(quote_s, _, s)]].
     
-  exp [[DNX_Splice(DNX_Var(name)) ^(s, _) ]] :=
-    QVar{name} -> s,
-    QVar{name} |-> d | error $[Variable [name] not declared] @name.
+  exp [[DNX_Splice(DNX_Var(name)) ^(s, p) ]] :=
+    Var{name} -> p,
+    Var{name} |-> d | error $[Variable [name] not declared] @name.
     
   exp [[DNX_Term(term) ^(s, _) ]] := expterm [[term ^(s)]].
   

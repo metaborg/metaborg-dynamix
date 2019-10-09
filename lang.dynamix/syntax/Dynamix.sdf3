@@ -45,9 +45,12 @@ context-free syntax
 >
  
  Definition.Def = <
-  <DEFNAME><DefParam?>(<{Pattern ","}*>) = 
+  <DEFNAME><DefParam?>(<{Pattern ","}*>)<NextLabel?> = 
    <Block>
  >
+ 
+ NextLabel.NextLabel = <; <ID><NextWith?>>
+ NextWith.NextWith = <(<Exp>)>
  
  DefParam.Param = <[<{DEFNAME ", "}+>]>
 // DefParamTypeList.ParamTypeList = <[<{DefParamType ", "}+>]>
@@ -81,6 +84,8 @@ context-free syntax
  Pattern.DNXTermOp_Add = <<Pattern> + <Pattern>> {left}
  Pattern.DNXTermOp_Sub = <<Pattern> - <Pattern>> {left}
  
+ Instruction.DNX_DefineVar = <!<ID>>
+ 
  Instruction.DNX_Bind = [
   [ID] = [Exp]
  ]
@@ -89,14 +94,17 @@ context-free syntax
   [ID] <- [Exp]
  ]
  
+ Instruction.DNX_BindExpSplice = [
+  ~[ID] <- [Exp]
+ ]
+ 
  Instruction.DNX_Return = <return(<Exp>)> {prefer}
  Instruction.DNX_Exp = Exp
- Instruction.DNX_Label = LABEL {prefer}
  
  Exp.DNX_Call = <<DEFNAME><DefParam?>(<{Exp ","}*>)>
  Exp.DNX_CallPrim = <<PRIMNAME><DefParam?>(<{Exp ","}*>)> {prefer}
  Exp.DNX_Var = ID
- Exp.DNX_LabelExp = LABEL
+// Exp.DNX_LabelExp = LABEL
  
  Exp.DNX_Quote = [<[Block]>]
  Exp.DNX_Splice = <~<Exp>>
