@@ -34,8 +34,8 @@ rules
 
 rules  
   // Desugar the parameters of Definitions to be a (potentially empty) list  
-  desugar-term: Def(name, None(), args, k, Block(body)) -> Def(name, [], args, <split-filter2(?DNX_Bind(_, _) <+ ?DNX_DefineVar(_))> body, <desugar-k> k)
-  desugar-term: Def(name, Some(Param(params)), args, k, Block(body)) -> Def(name, params, args, <split-filter2(?DNX_Bind(_, _) <+ ?DNX_DefineVar(_))> body, <desugar-k> k)
+  desugar-term: Def(name, None(), args, k, Block(body)) -> Def(name, [], args, body, <desugar-k> k)
+  desugar-term: Def(name, Some(Param(params)), args, k, Block(body)) -> Def(name, params, args, body, <desugar-k> k)
   
   // Desugar parameters of calls to lists
   desugar-term: DNX_Call(name, None(), args) -> DNX_Call(name, [], args)

@@ -15,63 +15,57 @@ rules
   // A body is compiled by first assigning new block labels for each DNX labael.
   // After this, each instruction in the body is compiled in a fold-like operation.
   dnx-compile-body(|_, _): DNX_Error(error) -> ([], DNX_Error(error))
-  dnx-compile-body(|properties, blocks): (binds, param_binds, (ct_body, rt_body)) -> out
+  dnx-compile-body(|properties, blocks): (binds, param_binds, body) -> out
     with
-      binds' := <dnx-compile-ct-instr(|binds, param_binds, properties, blocks)> ct_body; 
-       
-      quoted_blocks := <filter(?DNX_Bind(_, DNX_Quote(_)))> ct_body;
-      <map(dnx-compile-quoted-blocks(|binds', param_binds, properties, blocks))> quoted_blocks;
-      
-      out := <dnx-compile-instr(|binds', param_binds, properties, blocks)> (rt_body, [], None())
+      global_binds := <filter((?DNX_Bind(_, DNX_Quote(_)) <+ ?DNX_DefineVar(_)); bind-globals)> body;
+      binds' := <conc> (global_binds, binds);
+      out := <dnx-compile-instr(|binds', param_binds, properties, blocks)> (body, [], None())
 
 rules
-  dnx-compile-quoted-blocks(|b, p, prop, blocks): DNX_Bind(bind_name, DNX_Quote(Block(body))) -> None()
+  bind-globals: DNX_Bind(name, DNX_Quote(_)) -> (name, lbl)
     with
-      label := <lookup> (bind_name, b);
-      quoted_binds_needed := <collect-all( (\ DNX_Splice(DNX_Var(var)) -> var\) <+ (\ DNX_BindExpSplice(name, _) -> name \) )> body;
-      quoted_binds := <map( (\ name -> ($[~_[name]], <lookup> (name, b)) \) )> quoted_binds_needed;
-      body' := <topdown(try( (\ DNX_BindExpSplice(name, exp) -> DNX_BindExp($[~_[name]], exp) \) ))> body;
-      (out, None()) := <dnx-compile-body(|prop, b)> (quoted_binds, p, ([], body'));
-      <hashtable-put(|label, out)> blocks
-      
+      lbl := <string-replace(|"-", "_"); string-replace(|"'", "_"); newname; dnx-primitive-autolabel> name
+  
+  bind-globals: DNX_DefineVar(name) -> (name, newname)
+    with
+      newname := <newname; dnx-primitive-autovar> name
+  
 rules
- dnx-compile-ct-instr(|b, p, prop, blocks): [] -> b
+  // The empty list of instructions does not change the result
+  // Basecase of the recursion
+  dnx-compile-instr(|b, p, prop, blocks): ([], instr, exp) -> (instr, exp)
  
   // Define a variable for use.
   // Does not bind it to anything.
-  dnx-compile-ct-instr(|b, p, prop, blocks): [DNX_DefineVar(name) | t] -> out
-    where
-      dnx_var := <lookup'> (name, b)	// Already bound
+  dnx-compile-instr(|b, p, prop, blocks): ([DNX_DefineVar(name) | t], instr, None()) -> out
     with
-      out := <dnx-compile-ct-instr(|b, p, prop, blocks)> t
-        
-  dnx-compile-ct-instr(|b, p, prop, blocks): [DNX_DefineVar(name) | t] -> out
-    with
-      newname := <newname; dnx-primitive-autovar> name;
-      out := <dnx-compile-ct-instr(|[(name, newname) | b], p, prop, blocks)> t
+      out := <dnx-compile-instr(|b, p, prop, blocks)> (t, instr, None())
   
   // A non-expression bind does, in contrast to an expression bind, not write the expression value to a register.
   // These binds are only compile-time bindings.
   // Therefore we only need to update the bindings map (or in the case of a fresh variable extend this map).
-  dnx-compile-ct-instr(|b, p, prop, blocks): [DNX_Bind(var, val) | t] -> out
+  // In the case of a quoted block, we already have assigned a label for its binding, so we can use that directly.
+  
+  dnx-compile-instr(|b, p, prop, blocks): ([DNX_Bind(bind_name, DNX_Quote(Block(body))) | t], instr, None()) -> out
+    with
+      label := <lookup> (bind_name, b);
+      <dnx-compile-quote(|b, p, prop, blocks)> (body, label);
+      out := <dnx-compile-instr(|b, p, prop, blocks)> (t, instr, None())
+  
+  dnx-compile-instr(|b, p, prop, blocks): ([DNX_Bind(var, val) | t], instr, None()) -> out
     where
       <lookup'> (var, b)	// Already bound
     with
       (_, res) := <dnx-compile-exp(|b, p, prop, blocks)> val;
       b' := <update-map> (b, var, res); // Update the bound value
-      out := <dnx-compile-ct-instr(|b', p, prop, blocks)> t
+      out := <dnx-compile-instr(|b', p, prop, blocks)> (t, instr, None())
       
-  dnx-compile-ct-instr(|b, p, prop, blocks): [DNX_Bind(var, val) | t] -> out
+  dnx-compile-instr(|b, p, prop, blocks): ([DNX_Bind(var, val) | t], instr, None()) -> out
     with
       (_, res) := <dnx-compile-exp(|b, p, prop, blocks)> val;
       var_name := <newname> var;
       newbind := (var, res);
-      out := <dnx-compile-ct-instr(|[newbind|b], p, prop, blocks)> t
-    
-rules
-  // The empty list of instructions does not change the result
-  // Basecase of the recursion
-  dnx-compile-instr(|b, p, prop, blocks): ([], instr, exp) -> (instr, exp)
+      out := <dnx-compile-instr(|[newbind|b], p, prop, blocks)> (t, instr, None())
   
 
   // An expression just produces a list of instructions and some VM expression
@@ -113,5 +107,5 @@ rules
       out := <dnx-compile-instr(|b, p, prop, blocks)> (t, <conc> (instrs, [label]), None())
   
   // This case should never be triggered as cases for all different Dynamix constructs should be available
-  dnx-compile-instr(|b, p, prop, blocks): ([e | _], _, _) -> <debug(!"[Dynamix] "); fail> $[Undefined instr: [<write-to-string> e]. This should not happen in production] 
+  dnx-compile-instr(|b, p, prop, blocks): ([e | _], _, _) -> <debug(!"[Dynamix] "); fail> $[Cannot compile: [<write-to-string> e].] 
   

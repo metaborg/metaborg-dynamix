@@ -96,13 +96,12 @@ rules
   
 rules
   dnx-match-k(|binds, body): None() -> (binds, body)
-  dnx-match-k(|binds, body): Some( (name, Some(exp)) ) -> ([(name, lbl) | binds], (ct, <conc> (rt, [lbl, DNX_Return(exp)])))
+  dnx-match-k(|binds, body): Some( (name, Some(exp)) ) -> ([(name, lbl) | binds], <conc> (body, [lbl, DNX_Return(exp)]))
     with
-      (ct, rt) := body;
-      lbl := <newname; dnx-primitive-autolabel> "K"
+      lbl := <string-replace(|"-", "_"); string-replace(|"'", "_"); newname; dnx-primitive-autolabel> name
   dnx-match-k(|binds, body): Some( (name, None()) ) -> ([(name, lbl) | binds], <conc> (body, [lbl]))
     with
-      lbl := <newname; dnx-primitive-autolabel> "K"
+      lbl := <string-replace(|"-", "_"); string-replace(|"'", "_"); newname; dnx-primitive-autolabel> name
       
       
 rules

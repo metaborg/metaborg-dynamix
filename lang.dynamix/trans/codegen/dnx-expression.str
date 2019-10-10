@@ -24,7 +24,8 @@ rules
   // We just need to know the name of the label where this block will end up.
   dnx-compile-exp(|b, p, prop, blocks): DNX_Quote(Block(body)) -> ([], label)
     with
-      label := <newname; dnx-primitive-autolabel> "ql_"
+      label := <newname; dnx-primitive-autolabel> "quote_";
+      <dnx-compile-quote(|b, p, prop, blocks)> (body, label)
       
   // In the normal case we substitute all the variables with their actual values
   // After this we call the internal expression compilation rules
@@ -35,9 +36,10 @@ rules
       
   // Replace all variable refereces with their values
   dnx-substitute-arguments(|binds): term -> <topdown(try(dnx-substitute-arguments-(|binds)))> term
-  dnx-substitute-arguments-(|binds): DNXTerm_Var(name)         -> <dnx-substitute-arguments-(|binds)> DNX_Var(name)
-  dnx-substitute-arguments-(|binds): DNX_Splice(DNX_Var(name)) -> <lookup'> ($[~_[name]], binds)
-  dnx-substitute-arguments-(|binds): DNX_Var(name)             -> <lookup'> (name, binds)
+  dnx-substitute-arguments-(|binds): DNXTerm_Var(name)  -> <dnx-substitute-arguments-(|binds)> DNX_Var(name)
+  dnx-substitute-arguments-(|binds): DNX_Splice(name)   -> <lookup'> ($[~_[name]], binds)
+  dnx-substitute-arguments-(|binds): SplicedParam(name) -> <lookup'> ($[~_[name]], binds)
+  dnx-substitute-arguments-(|binds): DNX_Var(name)      -> <lookup'> (name, binds)
        
 rules
   // Call an other Dynamix rule with the given arguments
@@ -72,7 +74,26 @@ rules
       <not(string-starts-with(|"DNX_"))> <get-constructor> e
       
   dnx-compile-exp(|p, prop, b): e -> <debug(!"[Dynamix] "); fail> $[Cannot compile expression: [<write-to-string> e]. This should have thrown a more specific error]
-     
+
+rules
+  dnx-compile-quote(|b, p, prop, blocks): (body, label) -> label
+    with
+      quoted_binds_needed := <collect-all( (\ DNX_Splice(var) -> var\) <+ (\ DNX_BindExpSplice(name, _) -> name \) )> body;
+      quoted_binds := <map( (\ name -> ($[~_[name]], <lookup> (name, b)) \) )> quoted_binds_needed;
+      
+//      quoted_params_needed := <collect-all( (\ SplicedParam(var) -> var\) )> body;
+//      <debug> "4";
+//      quoted_params := <map( (\ name -> ($[~_[name]], <lookup> (name, p)) \) )> quoted_params_needed;
+//      <debug> "5";
+      
+      body' := <topdown(try( 
+      	(\ DNX_BindExpSplice(name, exp) -> DNX_BindExp($[~_[name]], exp) \) <+
+      	(\ SplicedParam(name) -> <lookup> (name, p) \)
+      ))> body;
+
+      (out, None()) := <dnx-compile-body(|prop, blocks)> (quoted_binds, [], body');
+      <hashtable-put(|label, out)> blocks
+
 rules
   // Convert A DNXTerm representing a term to the term that it represents
   // For example: DNXTerm_String("string") ---> "string"

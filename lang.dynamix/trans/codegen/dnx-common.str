@@ -13,8 +13,6 @@ signature
     DefCase: [Pattern] * [STRING] * [instruction] * ID -> S
     DNX_BindExp: [STRING] * [Exp] -> S
     DNX_Error: STRING -> S
-    
-    DNX_TempVar: STRING -> S
 
      
 rules

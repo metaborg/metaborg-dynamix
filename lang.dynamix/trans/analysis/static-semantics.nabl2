@@ -85,16 +85,16 @@ rules  // Imports
 //    Module{name} <=== s.
       
 rules // Definitions   
-  def[[Def(name, param, args, (ct_instrs, rt_instrs), k) ^(s)]] :=
+  def[[Def(name, param, args, instrs, k) ^(s)]] :=
     Def{name} -> s,
     new def_q_s, def_q_s ---> s,
-    Map1(defParam) [[param ^(def_q_s)]],
-    Map1(parterm) [[args ^(def_q_s)]],
-    
     new def_s,   def_s   ---> def_q_s,
-    Map2(ctInstr)[[ct_instrs ^(def_s, def_q_s)]],
-    Fold1C(instr) [[rt_instrs ^(def_s, def_s', _)]],
-    kParam [[k ^(def_q_s, def_s')]].
+    
+    Map1(defParam) [[param ^(def_s)]],
+    Map1(parterm) [[args ^(def_s)]],
+    
+    Fold1C(instr) [[instrs ^(def_s, def_s', def_q_s)]],
+    kParam [[k ^(def_s, def_s')]].
   
   defParam [[name ^(s) ]] :=
     Def{name} <- s.
@@ -226,13 +226,16 @@ rules // Instructions
     X[[ h ^(s, s2, p) ]],
     Fold1C(X)[[ t ^(s2, s', p) ]].
   
-  ctInstr [[ DNX_DefineVar(name) ^(s, p) ]] :=
-    Var{name} <- s.
+  instr [[ DNX_DefineVar(name) ^(s, s2, p) ]] :=
+    s == s2,
+    Var{name} <- p,
+    distinct/name D(p)/Var | error $[Duplicate compile time binding] @NAMES.
   
-  ctInstr [[ DNX_Bind(name, exp) ^(s, p) ]] :=
+  instr [[ DNX_Bind(name, exp) ^(s, s2, p) ]] :=
+    s == s2,
     exp [[exp ^(s, p)]],
-    Var{name} <- s,
-    distinct/name D(s)/Var | error $[Duplicate compile time binding] @NAMES.
+    Var{name} <- p,
+    distinct/name D(p)/Var | error $[Duplicate compile time binding] @NAMES.
   
   instr [[ DNX_BindExp(name, exp) ^(s, def_s, p) ]] :=
     exp [[exp ^(s, p)]],
@@ -263,22 +266,32 @@ rules // Expressions
     Var{name} -> s,
     Var{name} |-> d | error $[Variable [name] not declared] @name.
     
+  exp [[DNX_Call(SplicedParam(name), param, args) ^(s, p) ]] :=
+    Def{name} -> p,
+    Def{name} |-> d | error $[No declaration found for [name]] @name,
+    Map2(exp) [[args ^(s, p)]],
+    Map2(expParam) [[param ^(s, p)]].
+  
   exp [[DNX_Call(name, param, args) ^(s, p) ]] :=
     Def{name} -> s,
     Map2(exp) [[args ^(s, p)]],
-    Map1(expParam) [[param ^(s)]].
+    Map2(expParam) [[param ^(s, p)]].
      
   exp [[DNX_Quote(Block(instrs)) ^(s, p)]] :=
     new quote_s, quote_s ---> p,
     Fold1C(instr) [[instrs ^(quote_s, _, s)]].
     
-  exp [[DNX_Splice(DNX_Var(name)) ^(s, p) ]] :=
+  exp [[DNX_Splice(name) ^(s, p) ]] :=
     Var{name} -> p,
     Var{name} |-> d | error $[Variable [name] not declared] @name.
     
   exp [[DNX_Term(term) ^(s, _) ]] := expterm [[term ^(s)]].
   
-  expParam [[name ^(s)]] :=
+  expParam [[SplicedParam(name) ^(s, p)]] :=
+    Def{name} -> p,
+    Def{name} |-> d | error $[No declaration found for [name]] @name.
+    
+  expParam [[name ^(s, p)]] :=
     Def{name} -> s.
   
   

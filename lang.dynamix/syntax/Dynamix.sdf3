@@ -52,7 +52,10 @@ context-free syntax
  NextLabel.NextLabel = <; <ID><NextWith?>>
  NextWith.NextWith = <(<Exp>)>
  
- DefParam.Param = <[<{DEFNAME ", "}+>]>
+ DefParam.Param = <[<{DefParamElem ", "}+>]>
+ DefParamElem = DEFNAME
+ DefParamElem.SplicedParam = <~<DEFNAME>>
+ 
 // DefParamTypeList.ParamTypeList = <[<{DefParamType ", "}+>]>
  
 // DefParamType.ParamType = <<{Type "->"}*> -\> <Type>>
@@ -101,13 +104,13 @@ context-free syntax
  Instruction.DNX_Return = <return(<Exp>)> {prefer}
  Instruction.DNX_Exp = Exp
  
- Exp.DNX_Call = <<DEFNAME><DefParam?>(<{Exp ","}*>)>
+ Exp.DNX_Call = <<DefParamElem><DefParam?>(<{Exp ","}*>)>
  Exp.DNX_CallPrim = <<PRIMNAME><DefParam?>(<{Exp ","}*>)> {prefer}
  Exp.DNX_Var = ID
 // Exp.DNX_LabelExp = LABEL
  
  Exp.DNX_Quote = [<[Block]>]
- Exp.DNX_Splice = <~<Exp>>
+ Exp.DNX_Splice = <~<ID>>
  Exp = Link {prefer}
  Exp = Cont {prefer}
  Link.DNX_Link = <&<LINKNAME>>
