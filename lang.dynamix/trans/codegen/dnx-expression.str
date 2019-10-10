@@ -81,11 +81,6 @@ rules
       quoted_binds_needed := <collect-all( (\ DNX_Splice(var) -> var\) <+ (\ DNX_BindExpSplice(name, _) -> name \) )> body;
       quoted_binds := <map( (\ name -> ($[~_[name]], <lookup> (name, b)) \) )> quoted_binds_needed;
       
-//      quoted_params_needed := <collect-all( (\ SplicedParam(var) -> var\) )> body;
-//      <debug> "4";
-//      quoted_params := <map( (\ name -> ($[~_[name]], <lookup> (name, p)) \) )> quoted_params_needed;
-//      <debug> "5";
-      
       body' := <topdown(try( 
       	(\ DNX_BindExpSplice(name, exp) -> DNX_BindExp($[~_[name]], exp) \) <+
       	(\ SplicedParam(name) -> <lookup> (name, p) \)
