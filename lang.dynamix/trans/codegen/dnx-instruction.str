@@ -56,19 +56,26 @@ rules
     where
       <lookup'> (var, b)	// Already bound
     with
-      (_, res) := <dnx-compile-exp(|b, p, prop, blocks)> val;
+      res := <dnx-compile-exp(|b, p, prop, blocks)> val;
       b' := <update-map> (b, var, res); // Update the bound value
       out := <dnx-compile-instr(|b', p, prop, blocks)> (t, instr, None())
       
   dnx-compile-instr(|b, p, prop, blocks): ([DNX_Bind(var, val) | t], instr, None()) -> out
     with
-      (_, res) := <dnx-compile-exp(|b, p, prop, blocks)> val;
+      res := <dnx-compile-exp(|b, p, prop, blocks)> val;
       var_name := <newname> var;
       newbind := (var, res);
       out := <dnx-compile-instr(|[newbind|b], p, prop, blocks)> (t, instr, None())
   
 
-  // An expression just produces a list of instructions and some VM expression
+  // An expression 
+  // Or it just produces a list of instructions and some VM expression
+  dnx-compile-instr(|b, p, prop, blocks): ([DNX_Exp(DNX_Var(var)) | t], instrs, None()) -> out
+    where
+      (r_instr, r_exp) := <lookup'> (var, b)
+    with
+      out := <dnx-compile-instr(|b, p, prop, blocks)> (t, <conc> (instrs, r_instr), r_exp)
+  
   dnx-compile-instr(|b, p, prop, blocks): ([DNX_Exp(exp) | t], instrs, None()) -> out
     with
       (r_instr, r_exp) := <dnx-compile-exp(|b, p, prop, blocks)> exp;

@@ -27,6 +27,9 @@ rules
       label := <newname; dnx-primitive-autolabel> "quote_";
       <dnx-compile-quote(|b, p, prop, blocks)> (body, label)
       
+  // When compile time binds are used, we can get pairs here of expressions and instructions.
+  dnx-compile-exp(|b, p, prop, blocks): out@(instr, exp) -> out where <debug> "I guess this line was needed after all"
+  
   // In the normal case we substitute all the variables with their actual values
   // After this we call the internal expression compilation rules
   dnx-compile-exp(|b, p, prop, blocks): exp -> out
@@ -93,6 +96,7 @@ rules
   // Convert A DNXTerm representing a term to the term that it represents
   // For example: DNXTerm_String("string") ---> "string"
   // If it is already a proper Stratego term, this acts as the identity function
+  dnx-compile-term: ([], val) -> <dnx-compile-term> val
   dnx-compile-term: DNXTerm_Int(val) -> val
   dnx-compile-term: DNXTerm_String(string) -> string
   dnx-compile-term: DNXTerm_Pat(name, args) -> <mkterm> (name, <map(dnx-compile-term)> args)
@@ -129,6 +133,9 @@ rules
   // make a tuple with a list of instructions and a list of expressions
   // [(a, b), (c, d), (e,f)] ---> (<concat>[a, c, e], [b, d, f])
   extract-instructions: [] -> ([], [])
+  
+  extract-instructions: [(instr, None()) | t] -> <debug(!"[Dynamix] "); fail> $[Cannot call a function with a None() expression as argument]
+  
   extract-instructions: [(instr, exp) | t] -> (<conc> (instr, tail_instr), [exp | tail_arg])
     with
       (tail_instr, tail_arg) := <extract-instructions> t
