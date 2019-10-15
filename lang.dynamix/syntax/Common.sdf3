@@ -99,6 +99,7 @@ lexical syntax
   PRIMNAME = "nop"
   PRIMNAME = "length"
   PRIMNAME = "associate-index"
+  PRIMNAME = "explode-string"
   
 
   RULENAME = PRIMNAME        {reject}  

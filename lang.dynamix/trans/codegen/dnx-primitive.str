@@ -64,6 +64,9 @@ rules // Generic primimitive operations whose implementation is not dependent on
   // It only exists to allow empty cases in maps/folds without the typesystem complaining
   dnx-primitive-call(|p): ("nop", []) -> ([], None())  
   
+  // Given a string, returns a list of integers representing the characters in that string
+  dnx-primitive-call(|p): ("explode-string", [string]) -> ([], <explode-string> string)
+
 rules
   // Get a label from the hashtable.
   // If it does not exist, it must be a forward reference so we add a temporary label that we need to fix later.
