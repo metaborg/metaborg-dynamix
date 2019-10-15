@@ -78,8 +78,10 @@ rules
   
   dnx-compile-instr(|b, p, prop, blocks): ([DNX_Exp(exp) | t], instrs, None()) -> out
     with
-      (r_instr, r_exp) := <dnx-compile-exp(|b, p, prop, blocks)> exp;
-      out := <dnx-compile-instr(|b, p, prop, blocks)> (t, <conc> (instrs, r_instr), r_exp)
+      res := <dnx-compile-exp(|b, p, prop, blocks)> exp;
+      next := <(\ (r_instr, r_exp) -> (t, <conc> (instrs, r_instr), r_exp) \) <+ 
+               (\ exp -> (t, instrs, exp)\)> res;
+      out := <dnx-compile-instr(|b, p, prop, blocks)> next
   
   // A return is an identity function for the expression it contains
   dnx-compile-instr(|b, p, prop, blocks): ([DNX_Return(exp) | t], instrs, None()) -> out
