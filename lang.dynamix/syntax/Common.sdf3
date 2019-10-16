@@ -81,6 +81,8 @@ lexical syntax
   PRIMNAME = "iand"
   PRIMNAME = "ixor"
   
+  PRIMNAME = "req"
+  
   PRIMNAME = "is-int"
   PRIMNAME = "is-frame"
   PRIMNAME = "is-cf"
