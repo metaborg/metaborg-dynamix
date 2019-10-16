@@ -89,5 +89,5 @@ rules
       links'         := <mapconcat(?Links(l); !l);         map-with-index( (\ (idx, LinkAlias(l))         -> <map( (\e -> (<dec>idx, e) \) )> l \) ); concat> links;
       continuations' := <mapconcat(?Continuations(c); !c); map-with-index( (\ (idx, ContinuationAlias(c)) -> <map( (\e -> (<dec>idx, e) \) )> c \) ); concat> continuations;
       namespaces'    := <mapconcat(?Namespaces(n); !n);    map( (\ NameSpace(ns) -> ns \) )> namespaces;
-      init_size'     := <getfirst(?InitSize(s); !s; string-to-int) <+ !None()> init_size;
+      init_size'     := <(?[InitSize(s)]; !s; string-to-int) <+ (?[]; !None())> init_size;
       header' :=  DNX_Header(links', continuations', namespaces', init_size')

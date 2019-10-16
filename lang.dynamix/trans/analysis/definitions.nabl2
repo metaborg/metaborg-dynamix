@@ -19,7 +19,7 @@ rules
     Def{name} : DefT([], [ExpT()], ExpT()) !.
 
   primNames[[ name@"print" ^(s)]] :=
-    false | warning $[You should used printc for printing to the console] @name,
+    false | warning $[You should use printc for printing to the console] @name,
     Def{name} <- s,
     Def{name} : DefT([], [ExpT()], InstrT()) !.
 
