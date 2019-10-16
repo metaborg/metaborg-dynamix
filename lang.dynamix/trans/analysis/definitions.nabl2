@@ -32,6 +32,14 @@ rules
     false | warning $[You should use printc for printing to the console] @name,
     Def{name} <- s,
     Def{name} : DefT([], [ExpT()], InstrT()) !.
+  
+  primNames[[ name@"debug" ^(s)]] :=
+    false | note $[Debug instruction] @name,
+    Def{name} <- s.
+  
+  primNames[[ name@"debug-state" ^(s)]] :=
+    false | note $[Debug instruction] @name,
+    Def{name} <- s.
 
   primNames[[ name@"printc" ^(s)]] :=
     Def{name} <- s,
