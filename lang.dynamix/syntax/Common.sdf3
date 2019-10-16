@@ -101,6 +101,11 @@ lexical syntax
   PRIMNAME = "associate-index"
   PRIMNAME = "explode-string"
   
+  PRIMNAME = "tick"
+  PRIMNAME = "tock"
+  PRIMNAME = "debug"
+  PRIMNAME = "debug-state"
+  
 
   RULENAME = PRIMNAME        {reject}  
 

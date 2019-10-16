@@ -18,6 +18,16 @@ rules
     Def{name} <- s,
     Def{name} : DefT([], [ExpT()], ExpT()) !.
 
+  primNames[[ name@"tick" ^(s)]] :=
+    false | warning $[This is a benchmarking extension of the Frame VM] @name,
+    Def{name} <- s,
+    Def{name} : DefT([], [], InstrT()) !.
+
+  primNames[[ name@"tock" ^(s)]] :=
+    false | warning $[This is a benchmarking extension of the Frame VM] @name,
+    Def{name} <- s,
+    Def{name} : DefT([], [], InstrT()) !.
+    
   primNames[[ name@"print" ^(s)]] :=
     false | warning $[You should use printc for printing to the console] @name,
     Def{name} <- s,

@@ -67,6 +67,10 @@ rules // Generic primimitive operations whose implementation is not dependent on
   // Given a string, returns a list of integers representing the characters in that string
   dnx-primitive-call(|p): ("explode-string", [string]) -> ([], <explode-string> string)
 
+  // Given a string, returns a list of integers representing the characters in that string
+  dnx-primitive-call(|p): ("debug", [])   -> ([], None()) with debug(!"[Dynamix] Debug")
+  dnx-primitive-call(|p): ("debug", args) -> ([], None()) with <map(strip-annos; debug(!"[Dynamix] Debug: "))> args
+
 rules
   // Get a label from the hashtable.
   // If it does not exist, it must be a forward reference so we add a temporary label that we need to fix later.

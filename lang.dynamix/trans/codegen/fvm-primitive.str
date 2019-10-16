@@ -118,8 +118,12 @@ rules // Statements
   dnx-primitive-call(|p): ("push", [e1])          -> <stmt> [RGR_CFTransfer([e1])]
   dnx-primitive-call(|p): ("setC", [e1, e2, e3])  -> <stmt> [RGR_ContSet(e1, e2, e3)]
   dnx-primitive-call(|p): ("mkcur", [e1])         -> <stmt> [RGR_ScopeSetCurrent(e1)]
-  dnx-primitive-call(|p): ("print", [e1])         -> <stmt> [RGR_Print(e1)]
   dnx-primitive-call(|p): ("printc", [e1])        -> <stmt> [RGR_PrintChar(e1)]
+  
+  dnx-primitive-call(|p): ("print", [e1])     -> <stmt> [RGR_Print(e1)]
+  dnx-primitive-call(|p): ("debug-state", []) -> <stmt> [RGR_DebugKill()]
+  dnx-primitive-call(|p): ("tick", [])        -> <stmt> [RGR_Tick()]
+  dnx-primitive-call(|p): ("tock", [])        -> <stmt> [RGR_Tock()]
   
   dnx-primitive-call(|p): ("jump", [e1]) -> <control> RGR_Jump(e1)
   dnx-primitive-call(|p): ("jumpz", [e1, e2, e3]) -> <control> RGR_JumpZ(e1, e2, e3)
