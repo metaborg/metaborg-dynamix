@@ -20,11 +20,6 @@ debug:
   typesmart: false
 
 exports:
-- language: ATerm
-  directory: src-gen/syntax
-- language: ATerm
-  directory: src-gen/dynamix
-  includes: "**.aterm"
 - language: SDF
   directory: src-gen/syntax
   includes: "**/*.sdf"
