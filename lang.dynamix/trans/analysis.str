@@ -84,10 +84,10 @@ rules
   build-header: Module(name, imports, primitives, types, defs, header_elems) -> Module(name, imports', primitives, types, defs, header')
     where
       headers := <mapconcat(?Header(a); !a)> header_elems;
-      (links, continuations, namespaces, init_size) := <split-list4(?Links(_), ?Continuations(_), ?Namespaces(_), (?InitSize(s); !s))> headers;
+      (links, continuations, namespaces, init_size) := <split-list4(?Links(_), ?Continuations(_), ?Namespaces(_), (?InitSize(_)))> headers;
       imports'       := <mapconcat(?Imports(i); !i); map( (\ Import(i) -> i \) )> imports;
       links'         := <mapconcat(?Links(l); !l);         map-with-index( (\ (idx, LinkAlias(l))         -> <map( (\e -> (<dec>idx, e) \) )> l \) ); concat> links;
       continuations' := <mapconcat(?Continuations(c); !c); map-with-index( (\ (idx, ContinuationAlias(c)) -> <map( (\e -> (<dec>idx, e) \) )> c \) ); concat> continuations;
       namespaces'    := <mapconcat(?Namespaces(n); !n);    map( (\ NameSpace(ns) -> ns \) )> namespaces;
-      init_size'     := <(?[InitSize(s)]; !s; string-to-int) <+ (?[]; !None())> init_size;
+      init_size'     := <(?[InitSize(s)|_]; !s; string-to-int) <+ (?[]; !None())> init_size;
       header' :=  DNX_Header(links', continuations', namespaces', init_size')
