@@ -104,8 +104,11 @@ context-free syntax
  Instruction.DNX_Return = <return(<Exp>)> {prefer}
  Instruction.DNX_Exp = Exp
  
+ PrimName = PRIMNAME
+ PrimName = DNXPRIMNAME
+ 
  Exp.DNX_Call = <<DefParamElem><DefParam?>(<{Exp ","}*>)>
- Exp.DNX_CallPrim = <<PRIMNAME><DefParam?>(<{Exp ","}*>)> {prefer}
+ Exp.DNX_CallPrim = <<PrimName><DefParam?>(<{Exp ","}*>)> {prefer}
  Exp.DNX_Var = ID
 // Exp.DNX_LabelExp = LABEL
  

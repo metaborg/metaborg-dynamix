@@ -11,6 +11,7 @@ colorer
   constructor  = 0 70 70
   rulename     = 15 30 140 bold
   primitive    = 200 80 0 bold
+  dnxprimitive = 45 134 85 bold
   type         = 0 80 0 bold italic
   label        = 0 0 0 bold
   
@@ -22,6 +23,7 @@ colorer
   CONSTRUCTOR: constructor
   DEFNAME:     rulename
   PRIMNAME:    primitive
+  DNXPRIMNAME: dnxprimitive
   Type._:      type
   STRING:      string
   LABEL:       label
