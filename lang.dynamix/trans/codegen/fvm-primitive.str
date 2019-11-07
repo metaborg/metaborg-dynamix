@@ -72,7 +72,7 @@ rules // Expressions
   dnx-primitive-call(|p): ("curC", [lbl])     -> ([], RGR_ContCur(lbl))
   dnx-primitive-call(|p): ("newC", [e1, e2])  -> ([], RGR_ContNew(e1, e2))
   dnx-primitive-call(|p): ("curCF", [])       -> ([], RGR_CFThis())
-  dnx-primitive-call(|p): ("newCF", [e1, e2]) -> ([], RGR_CFNew(e1, e2))
+  dnx-primitive-call(|p): ("newCF", [e1])     -> ([], RGR_CFNew(e1))
   dnx-primitive-call(|p): ("getC", [e1, e2])  -> ([], RGR_ContGet(e1, e2))
   dnx-primitive-call(|p): ("unpackC", [e1])   -> ([], RGR_ContUnpack(e1))
   dnx-primitive-call(|p): ("unpackCF", [e1])  -> ([], RGR_CFUnpack(e1))
@@ -117,7 +117,6 @@ rules // Statements
   dnx-primitive-call(|p): ("link", [e1, e2, e3])  -> <stmt> [RGR_Link(e1, <try(fvm-convert-path)> e2, e3)]
   dnx-primitive-call(|p): ("set", [e1, e2, e3])   -> <stmt> [RGR_Set(e1, <fvm-convert-path> e2, e3)] where <is-list> e2
   dnx-primitive-call(|p): ("set", [e1, e2, e3])   -> <stmt> [RGR_Set(e1, e2, e3)]
-  dnx-primitive-call(|p): ("push", [e1])          -> <stmt> [RGR_CFTransfer([e1])]
   dnx-primitive-call(|p): ("setC", [e1, e2, e3])  -> <stmt> [RGR_ContSet(e1, e2, e3)]
   dnx-primitive-call(|p): ("mkcur", [e1])         -> <stmt> [RGR_ScopeSetCurrent(e1)]
   dnx-primitive-call(|p): ("printc", [e1])        -> <stmt> [RGR_PrintChar(e1)]
