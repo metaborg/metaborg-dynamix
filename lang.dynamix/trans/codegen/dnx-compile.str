@@ -108,7 +108,7 @@ rules
     where
       [] := param	// Primitives cannot have a param
     with
-      out := <dnx-primitive-call(|properties) <+ (!${Missing primitive implementation for {<write-to-string> primname}}; debug(!"[Dynamix] "); fail)> (primname, args)
+      out := <dnx-primitive-call(|properties) <+ (!${Missing primitive implementation for {<write-to-string> primname}/{<length> args}}; debug(!"[Dynamix] "); fail)> (primname, args)
 
 rules
   // If the match produced a Some, just unpack it
