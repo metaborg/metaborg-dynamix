@@ -125,6 +125,7 @@ rules // Statements
   dnx-primitive-call(|p): ("debug-state", []) -> <stmt> [RGR_DebugKill()]
   dnx-primitive-call(|p): ("tick", [])        -> <stmt> [RGR_Tick()]
   dnx-primitive-call(|p): ("tock", [])        -> <stmt> [RGR_Tock()]
+  dnx-primitive-call(|p): ("forceGC", [])     -> <stmt> [RGR_ForceGC()]
   
   dnx-primitive-call(|p): ("jump", [e1]) -> <control> RGR_Jump(e1)
   dnx-primitive-call(|p): ("jumpz", [e1, e2, e3]) -> <control> RGR_JumpZ(e1, e2, e3)

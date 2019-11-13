@@ -107,6 +107,7 @@ lexical syntax
   
   PRIMNAME = "tick"
   PRIMNAME = "tock"
+  PRIMNAME = "forceGC"
   PRIMNAME = "debug-state"
   
 
