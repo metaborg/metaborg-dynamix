@@ -48,7 +48,6 @@ lexical syntax
   
   ID = "rules" {reject}
   
-  PRIMNAME = "push"
   PRIMNAME = "pop"
   PRIMNAME = "print"
   PRIMNAME = "printc"
@@ -84,6 +83,8 @@ lexical syntax
   PRIMNAME = "is-frame"
   PRIMNAME = "is-cf"
   PRIMNAME = "is-continuation"
+  PRIMNAME = "is-null"
+  PRIMNAME = "is-code"
     
   PRIMNAME = "new"
   PRIMNAME = "size"
@@ -100,9 +101,9 @@ lexical syntax
   DNXPRIMNAME = "associate-index"
   DNXPRIMNAME = "explode-string"
   
-  DNXPRIMNAME = "null"
-  DNXPRIMNAME = "int"
-  DNXPRIMNAME = "char"
+  PRIMNAME = "null"
+  PRIMNAME = "int"
+  PRIMNAME = "char"
   DNXPRIMNAME = "debug"
   
   PRIMNAME = "tick"

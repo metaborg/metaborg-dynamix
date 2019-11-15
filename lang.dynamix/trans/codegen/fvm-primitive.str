@@ -98,7 +98,8 @@ rules // Expressions
   dnx-primitive-call(|p): ("is-null",  [e1]) -> ([], RGR_IsNull(e1))
   dnx-primitive-call(|p): ("is-int",   [e1]) -> ([], RGR_IsInt(e1))
   dnx-primitive-call(|p): ("is-frame", [e1]) -> ([], RGR_IsFrame(e1))
-  dnx-primitive-call(|p): ("is-CF", [e1]) -> ([], RGR_IsCF(e1))
+  dnx-primitive-call(|p): ("is-CF",    [e1]) -> ([], RGR_IsCF(e1))
+  dnx-primitive-call(|p): ("is-code",  [e1]) -> ([], RGR_IsCode(e1))
   dnx-primitive-call(|p): ("is-continuation", [e1]) -> ([], RGR_IsCont(e1))
   
   dnx-primitive-call(|p): ("new",  [e1]) -> ([], RGR_New(e1))
