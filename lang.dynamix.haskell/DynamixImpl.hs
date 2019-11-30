@@ -104,6 +104,7 @@ instance Show (Cmd a) where
   show (LabelC _) = "LabelC"
   show (Fail s) = "Fail " ++ s
 
+
 -----------------------
 --- monad instances ---
 -----------------------
@@ -142,20 +143,23 @@ instance MonadFail Code where
 -------------------
 
 data HeapFrame = HF { links :: Map Label Frame
-                    , slots :: Map Name Val    }
+                    , slots :: Map Name Val
+                    }
                deriving Show
 
 type Heap = [HeapFrame]
 
 data Regs = Regs { argvalue  :: Maybe Val
-                 , callret   :: Maybe Val    }
+                 , callret   :: Maybe Val
+                 }
           deriving Show
 
 data ControlFrame = CF { pc   :: Code Val
                        , ret  :: CFrame
                        , df   :: Frame
                        , exch :: Maybe CFrame
-                       , regs :: Regs     }
+                       , regs :: Regs
+                       }
                   deriving Show
 
 type Stack = [ControlFrame]

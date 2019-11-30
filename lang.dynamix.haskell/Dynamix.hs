@@ -33,14 +33,12 @@ data Value m where
   NumV    :: Int -> Value m
   FrameV  :: Frame -> Value m
   CodeV   :: m (Value m) -> Value m
-  ContV   :: (Value m -> m (Value m)) -> Value m
 
 instance Show (Value m) where
   show UnitV      = "unit"
   show (NumV n)   = show n
   show (FrameV f) = "#" ++ show f
   show (CodeV _)  = "<code>"
-  show (ContV _)  = "<cont>"
   
 data Path = PStep Label Path
           | PPos Name
@@ -167,7 +165,7 @@ eval (Let x e1 e2) = do
   v2 <- eval e2
   mkcur fcur
   return v2
-eval (If e1 e2 e3) =
+eval (If e1 e2 e3) = do
   labelc (\ k -> do
     v1 <- eval e1
     c2 <- quote (do v <- eval e2
