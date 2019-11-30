@@ -18,6 +18,11 @@ import Control.Monad.Fail
 import Free
 import HeapFrame
 
+
+------------------------------
+--- object language syntax ---
+------------------------------
+
 data Expr = Num Int | Fun Expr | App Expr Expr | Var Path
           | CallCC Expr
           deriving Show
@@ -27,6 +32,11 @@ data Expr = Num Int | Fun Expr | App Expr Expr | Var Path
 
 lete :: Expr -> Expr -> Expr
 lete e body = App (Fun body) e
+
+
+------------------------------
+--- object language values ---
+------------------------------
 
 data Val m = NumV Int | ClosV Expr Frame | ContV (Val m -> m (Val m))
 
@@ -39,9 +49,14 @@ instance Show (Val m) where
   show (NumV i) = show i
   show (ClosV e f) = show $ "<" ++ show e ++ ", " ++ show f ++ ">"
   show (ContV _) = "<cont>"
-  
-
+ 
 type Value = Val (Free Cmd)
+
+
+---------------------------------------
+--- meta-language commands and code ---
+---------------------------------------
+
 type Code  = Free Cmd
 
 data Cmd :: * -> * where
@@ -61,6 +76,9 @@ data Cmd :: * -> * where
 
   -- failure fragment
   Err   :: String -> Cmd a
+
+instance MonadFail (Free Cmd) where
+  fail = liftF . Err
 
 
 ----------------------------
@@ -100,8 +118,10 @@ callcc = liftF . CCC
 abort :: Code Value -> Code Value
 abort = liftF . Abort
 
-instance MonadFail (Free Cmd) where
-  fail = liftF . Err
+
+-----------------------------------
+--- object language interpreter ---
+-----------------------------------
 
 interp :: Expr -> Code Value
 interp (Num i) = return (NumV i)
@@ -120,12 +140,15 @@ interp (App e1 e2) = do
     ContV k ->
       k v2
     _ -> err $ "cannot apply non-function value: " ++ show v
-      
 interp (Var p) = do
   get p
 interp (CallCC e) = do
   callcc (interp e)
 
+
+---------------------------------
+--- meta-language interpreter ---
+---------------------------------
 
 data Result a = Final a
               | Cont (Code a)
@@ -200,6 +223,8 @@ run e = fst $
 -------------
 --- tests ---
 -------------
+
+-- TODO: more...
 
 testcc_simple :: Expr
 testcc_simple = CallCC (App (Var (PPos 0)) (Num 42))
