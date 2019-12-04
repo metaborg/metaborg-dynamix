@@ -1,20 +1,27 @@
+{-# OPTIONS_GHC -Wall #-}
+
+{-# LANGUAGE GADTs #-}
+{-# LANGUAGE KindSignatures #-}
+{-# LANGUAGE QuantifiedConstraints #-}
+{-# LANGUAGE BangPatterns #-}
+{-# LANGUAGE DerivingStrategies #-}
+{-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE InstanceSigs #-}
 {-# LANGUAGE ExistentialQuantification #-}
-{-# OPTIONS_GHC -Wall #-}
+
+module Free where
+
+import Control.Exception
+import Data.Typeable
+import System.IO.Unsafe
 
 
 --------------------
 --- a free monad ---
 --------------------
 
-module Free where
-
 data Free c a = Stop a
               | forall b. Step (c b) (b -> Free c a)
-
-instance Show (Free c a) where
-  show (Step _ _) = "step"
-  show (Stop _)   = "stop"
 
 instance Functor (Free c) where
   fmap :: (a -> b) -> Free c a -> Free c b
@@ -38,3 +45,57 @@ liftF :: c a -> Free c a
 liftF c = Step c Stop
 
 
+-------------
+--- folds ---
+-------------
+
+-- monad morphism
+foldF :: Monad m =>
+         (forall b. c b -> m b) ->
+         Free c a -> m a
+foldF _ (Stop x) = return x
+foldF f (Step c k) = f c >>= foldF f . k
+
+-- deep handler
+foldK :: Monad m =>
+         (forall b. c b -> (b -> m a) -> m a) ->
+         Free c a -> m a
+foldK _ (Stop x) = return x
+foldK f (Step c k) = f c (foldK f . k)
+
+-- shallow handler
+foldS :: Monad m =>
+         (forall b. c b -> (b -> Free c a) -> m a) ->
+         Free c a -> m a
+foldS _ (Stop x) = return x
+foldS f (Step c k) = f c k
+
+-- continuation handler
+foldC :: Monad m =>
+         (forall b. c b -> (b -> Free c a) -> [(a -> Free c a)] -> m a) ->
+         [(a -> Free c a)] -> Free c a -> m a
+foldC _ [] (Stop x) = return x
+foldC f (c : cs) (Stop x) = foldC f cs (c x)
+foldC f c (Step x k) = f x k c
+
+
+----------------------
+--- pretty-printer ---
+----------------------
+
+newtype FVar = FVar Int
+             deriving (Typeable, Show)
+
+instance Exception FVar
+
+fromFree :: (forall b. Show (c b), Show a) => Int -> Free c a -> String
+fromFree !free xOrVar = unsafePerformIO $ do
+  ex <- evaluate xOrVar
+  case ex of
+    Stop x -> do
+      x' <- evaluate x
+      return $ "(Stop " ++ show x' ++ ")"
+    Step c k -> do
+      c' <- evaluate c
+      return $ "(Step " ++ show c' ++ " (\\ x" ++ show free ++ " -> " ++ fromFree (free + 1) (k (throw (FVar free))) ++ "))"
+  `catch` \ (FVar i) -> return $ "x" ++ show i

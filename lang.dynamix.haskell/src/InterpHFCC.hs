@@ -14,6 +14,8 @@ import Data.Map.Strict
 import Control.Monad.Identity (runIdentity)
 import Control.Monad.Reader (runReaderT)
 import Control.Monad.State (runStateT)
+import Control.Monad.Except (throwError, runExcept)
+import Data.Either.HT (mapRight)
 import Control.Monad.Fail
 import Free
 import HeapFrame
@@ -66,7 +68,6 @@ data Cmd :: * -> * where
   Get   :: Path -> Cmd Value
   GetV  :: Frame -> Name -> Cmd Value
   New   :: Cmd Frame
-  GetL  :: [Label] -> Cmd Frame
   CurF  :: Cmd Frame
   WithF :: Frame -> Code Value -> Cmd Value
 
@@ -80,6 +81,20 @@ data Cmd :: * -> * where
 instance MonadFail (Free Cmd) where
   fail = liftF . Err
 
+instance Show (Cmd a) where
+  show (SetL f l f') = "(SetL " ++ show f ++ " " ++ show l ++ " " ++ show f' ++ ")"
+  show (SetV f n v) = "(SetV " ++ show f ++ " " ++ show n ++ " " ++ show v ++ ")"
+  show (Get p) = "(Get " ++ show p ++ ")"
+  show (GetV f n) = "(GetV " ++ show f ++ " " ++ show n ++ ")"
+  show New = "New"
+  show CurF = "CurF"
+  show (WithF f c) = "(WithF " ++ show f ++ " " ++ fromFree 0 c ++ ")"
+  show (CCC c) = "(CCC " ++ fromFree 0 c ++ ")"
+  show (Abort c) = "(Abort " ++ fromFree 0 c ++ ")"
+  show (Err s) = "(Err " ++ s ++ ")"
+
+instance Show a => Show (Code a) where
+  show x = fromFree 0 x
 
 ----------------------------
 --- boilerplate liftings ---
@@ -99,9 +114,6 @@ getv f n = liftF (GetV f n)
 
 new :: Code Frame
 new = liftF New
-
-getl :: [Label] -> Code Frame
-getl = liftF . GetL
 
 curf :: Code Frame
 curf = liftF CurF
@@ -164,20 +176,16 @@ step (Step (SetL f l f') k) = trace "setl" $ do
 step (Step (SetV f n v) k) = trace "set" $ do
   setValue f n v
   return (Cont (k ()))
-step (Step (Get p) k) = trace "get" $ do
+step (Step (Get p) k) =  trace (show (Step (Get p) k)) $ do
   f <- curFrame
   v <- followPath f p
-  return (Cont (k v))
+  trace ("got: " ++ show v) $ return (Cont (k v))
 step (Step (GetV f n) k) = trace "getv" $ do
   v <- getValue f n
   return (Cont (k v))
 step (Step New k) = trace "new" $ do
   f <- allocFrame
   return (Cont (k f))
-step (Step (GetL ls) k) = trace "getl" $ do
-  f  <- curFrame
-  f' <- followLinks f ls
-  return (Cont (k f'))
 step (Step CurF k) = trace "curf" $ do
   f <- curFrame
   return (Cont (k f))
@@ -190,34 +198,34 @@ step (Step (WithF f c) k) = trace "withf" $ do
     Cont c'  -> return $ Cont (Step (WithF f c') k)
 step (Step (Err s) _) = trace "err" $ do
   return (Stuck s)
-step (Step (CCC c) k) = trace "cc" $ do
+step (Step (CCC c) k) = trace (show $ Step (CCC c) k) $ do
   f  <- curFrame
   f' <- allocFrame
   setLink f' P f
   setValue f' 0 (ContV (abort . k))
   return (Cont (Step (WithF f' c) k))
-step (Step (Abort c) _) =
+step (Step (Abort c) _) = trace ("aborting to: " ++ (show $! c)) $ do
   return (Disco c)
 
   
-steps :: Code Value -> HFT Val Code (Either Value String)
+steps :: Code Value -> HFT Val Code Value
 steps c = do
   r <- step c
   case r of
     Final a ->
-      return (Left a)
+      return a
     Cont cd ->
       steps cd
     Disco cd -> 
       steps cd
     Stuck s ->
-      return (Right s)
+      throwError s
 
 
-run :: Expr -> Either Value String
-run e = fst $
-        runIdentity (runStateT (runReaderT (steps (interp e)) 0)
-                               [HF (fromList []) (fromList [])])
+run :: Expr -> Either String Value
+run e = mapRight fst $
+        runExcept (runStateT (runReaderT (steps (interp e)) 0)
+                             [HF (fromList []) (fromList [])])
 
 
 -------------
@@ -234,6 +242,6 @@ testcc_app = lete (Fun (CallCC (App (Var (PPos 0)) (Var (PStep P (PPos 0))))))
                   (App (App (App (Var (PPos 0)) (Num 42)) (Num 0)) (Num (- 1)))
 
 tests :: Test
-tests = test [ "test1" ~: "cc simple" ~: Left (NumV 42) ~=? run testcc_simple
-             , "test2" ~: "cc app" ~: Left (NumV 42) ~=? run testcc_app ]
+tests = test [ "test1" ~: "cc simple" ~: Right (NumV 42) ~=? run testcc_simple
+             , "test2" ~: "cc app" ~: Right (NumV 42) ~=? run testcc_app ]
 

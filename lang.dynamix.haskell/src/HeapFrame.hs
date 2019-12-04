@@ -6,9 +6,9 @@
 module HeapFrame where
 
 import Data.Map.Strict
-import Control.Monad.Identity
-import Control.Monad.State
-import Control.Monad.Reader
+import Control.Monad.State (StateT, get, put)
+import Control.Monad.Reader (ReaderT, local, ask)
+import Control.Monad.Except (Except)
 
 
 ------------------------
@@ -63,7 +63,7 @@ update' (x : xs) i y = x : update' xs (i - 1) y
 --- heap/frame monad transformer ---
 ------------------------------------
 
-type HFT val m a = ReaderT Frame (StateT [HeapFrame val m] Identity) a
+type HFT val m a = ReaderT Frame (StateT [HeapFrame val m] (Except String)) a
 
 getHeap :: Monad m => HFT val m (Heap val m)
 getHeap = get
