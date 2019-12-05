@@ -16,15 +16,14 @@ import Data.Either.HT (mapRight)
 --- heaps and frames ---
 ------------------------
 
-type Heap val m = [HeapFrame val m]
+type Heap val = [HeapFrame val]
 
-data HeapFrame :: ((* -> *) -> *) -> (* -> *) -> * where
-  HF :: (Map Label Frame) -> Map Name (val m) -> HeapFrame val m
+data HeapFrame val = HF (Map Label Frame) (Map Name val)
 
-links :: HeapFrame val m -> Map Label Frame
+links :: HeapFrame val -> Map Label Frame
 links (HF links _) = links
 
-slots :: HeapFrame val m -> Map Name (val m)
+slots :: HeapFrame val -> Map Name val
 slots (HF _ slots) = slots
 
 type Frame = Int
@@ -54,7 +53,7 @@ type Name = Int
 --- stacks and stack slots ---
 ------------------------------
 
-type Stack val m sslots = ([(val m -> m (val m))], sslots)
+type Stack val code slots = ([(val -> code val)], slots)
 
 
 -----------
@@ -71,92 +70,90 @@ update' (x : xs) i y = x : update' xs (i - 1) y
 --- heap/frame monad ---
 ------------------------
 
-type HFT val m sslots a = ReaderT (Frame, Stack val m sslots)
-                                  (StateT [HeapFrame val m] (Except String)) a
+type HFT val code slots a = ReaderT (Frame, Stack val code slots)
+                                    (StateT [HeapFrame val] (Except String)) a
 
-getHeap :: Monad m => HFT val m sslots (Heap val m)
+getHeap :: HFT val code sslots (Heap val)
 getHeap = get
 
-putHeap :: Monad m => Heap val m -> HFT val m sslots ()
+putHeap :: Heap val -> HFT val code sslots ()
 putHeap = put
 
-getFrame :: Monad m => Frame -> HFT val m sslots (HeapFrame val m)
+getFrame :: Frame -> HFT val code sslots (HeapFrame val)
 getFrame i = do
   h <- getHeap
   return (h !! i)
 
-putFrame :: Monad m => Frame -> HeapFrame val m -> HFT val m sslots ()
+putFrame :: Frame -> HeapFrame val -> HFT val code slots ()
 putFrame i hf = do
   h <- getHeap
   putHeap (update' h i hf)
 
-setLink :: Monad m => Frame -> Label -> Frame -> HFT val m sslots ()
+setLink :: Frame -> Label -> Frame -> HFT val code slots ()
 setLink f l f' = do
   (HF links slots) <- getFrame f
   putFrame f (HF (insert l f' links) slots)
 
-getLink :: Monad m => Frame -> Label -> HFT val m sslots Frame
+getLink :: Frame -> Label -> HFT val code slots Frame
 getLink f l = do
   hf <- getFrame f
   return (links hf ! l)
 
-setValue :: Monad m => Frame -> Name -> val m -> HFT val m sslots ()
+setValue :: Frame -> Name -> val -> HFT val code slots ()
 setValue f n v = do
   (HF links slots) <- getFrame f
   putFrame f (HF links (insert n v slots))
   return ()
 
-getValue :: Monad m => Frame -> Name -> HFT val m sslots (val m)
+getValue :: Frame -> Name -> HFT val code slots val
 getValue f n = do
   hf <- getFrame f
   return (slots hf ! n)
 
-curFrame :: Monad m => HFT val m sslots Frame
+curFrame :: HFT val code slots Frame
 curFrame = do
   (f , _) <- ask
   return f
 
-withFrame :: Monad m => Frame -> HFT val m sslots a -> HFT val m sslots a
+withFrame :: Frame -> HFT val code slots a -> HFT val code slots a
 withFrame f m = local (\ (_ , s) -> (f , s)) m
 
-followPath :: Monad m => Frame -> Path -> HFT val m sslots (val m)
+followPath :: Frame -> Path -> HFT val code slots val
 followPath f (PPos n) = do
   getValue f n
 followPath f (PStep l p) = do
   f' <- getLink f l
   followPath f' p
 
-followLinks :: Monad m => Frame -> [Label] -> HFT val m sslots Frame
+followLinks :: Frame -> [Label] -> HFT val code slots Frame
 followLinks f [] = do
   return f
 followLinks f (l : ls) = do
   f' <- getLink f l
   followLinks f' ls
 
-allocFrame :: Monad m => HFT val m sslots Frame
+allocFrame :: HFT val code slots Frame
 allocFrame = do
   h <- getHeap
   putHeap (h ++ [HF (fromList []) (fromList [])])
   return (length h)
 
-pushCont :: Monad m => (val m -> m (val m)) -> HFT val m sslots a -> HFT val m sslots a
+pushCont :: (val -> code val) -> HFT val code slots a -> HFT val code slots a
 pushCont k m = local (\ (f , (s , sslots)) -> (f , (k : s , sslots))) m
 
-localS :: Monad m => (sslots -> sslots) -> HFT val m sslots a -> HFT val m sslots a
+localS :: (slots -> slots) -> HFT val code slots a -> HFT val code slots a
 localS g m = local (\ (f , (s , sslots)) -> (f , (s , g sslots))) m
 
-curConts :: Monad m => HFT val m sslots [(val m -> m (val m))]
+curConts :: HFT val code slots [(val -> code val)]
 curConts = do
   (_ , (s , _)) <- ask
   return s
 
-withConts :: Monad m =>
-             [(val m -> m (val m))] -> HFT val m sslots a -> HFT val m sslots a
+withConts :: [(val -> code val)] -> HFT val code slots a -> HFT val code slots a
 withConts s m = local (\ (f , (_ , sslots)) -> (f , (s , sslots))) m
 
-withFrameCont :: Monad m =>
-                 Frame -> (val m -> m (val m)) -> HFT val m sslots a ->
-                 HFT val m sslots a
+withFrameCont :: Frame -> (val -> code val) -> HFT val code slots a ->
+                 HFT val code slots a
 withFrameCont f k m = local (\ (_ , (ks , ss)) -> (f , (k : ks , ss))) m
 
 
@@ -164,7 +161,7 @@ withFrameCont f k m = local (\ (_ , (ks , ss)) -> (f , (k : ks , ss))) m
 --- run ---
 -----------
 
-runHFT :: HFT val m sslots a -> sslots -> Either String a
+runHFT :: HFT val code slots a -> slots -> Either String a
 runHFT e ss = mapRight fst $
               runExcept (runStateT (runReaderT e (0 , ([] , ss)))
                                    [HF (fromList []) (fromList [])])

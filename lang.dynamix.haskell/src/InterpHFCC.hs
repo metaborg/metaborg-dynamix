@@ -11,7 +11,6 @@ import Debug.Trace
 
 import Test.HUnit hiding (Path)
 import Data.Map.Strict
-import Control.Monad.Identity (runIdentity)
 import Control.Monad.Reader (runReaderT)
 import Control.Monad.State (runStateT)
 import Control.Monad.Except (throwError, runExcept)
@@ -40,20 +39,18 @@ lete e body = App (Fun body) e
 --- object language values ---
 ------------------------------
 
-data Val m = NumV Int | ClosV Expr Frame | ContV (Val m -> m (Val m))
+data Val = NumV Int | ClosV Expr Frame | ContV (Val -> Code Val)
 
-instance Eq (Val m) where
+instance Eq Val where
   NumV i1 == NumV i2 = i1 == i2
   ClosV e1 f1 == ClosV e2 f2 = e1 == e2 && f1 == f2
   _ == _ = False
 
-instance Show (Val m) where
+instance Show Val where
   show (NumV i) = show i
   show (ClosV e f) = show $ "<" ++ show e ++ ", " ++ show f ++ ">"
   show (ContV _) = "<cont>"
  
-type Value = Val (Free Cmd)
-
 
 ---------------------------------------
 --- meta-language commands and code ---
@@ -64,16 +61,16 @@ type Code  = Free Cmd
 data Cmd :: * -> * where
   -- heap frame fragment
   SetL  :: Frame -> Label -> Frame -> Cmd ()
-  SetV  :: Frame -> Name -> Value -> Cmd ()
-  Get   :: Path -> Cmd Value
-  GetV  :: Frame -> Name -> Cmd Value
+  SetV  :: Frame -> Name -> Val -> Cmd ()
+  Get   :: Path -> Cmd Val
+  GetV  :: Frame -> Name -> Cmd Val
   New   :: Cmd Frame
   CurF  :: Cmd Frame
-  WithF :: Frame -> Code Value -> Cmd Value
+  WithF :: Frame -> Code Val -> Cmd Val
 
   -- continuation fragment
-  CCC   :: Code Value -> Cmd Value
-  Abort :: Code Value -> Cmd Value
+  CCC   :: Code Val -> Cmd Val
+  Abort :: Code Val -> Cmd Val
 
   -- failure fragment
   Err   :: String -> Cmd a
@@ -103,13 +100,13 @@ instance Show a => Show (Code a) where
 setl :: Frame -> Label -> Frame -> Code ()
 setl f l f' = liftF (SetL f l f')
 
-setv :: Frame -> Name -> Value -> Code ()
+setv :: Frame -> Name -> Val -> Code ()
 setv f n v = liftF (SetV f n v)
 
-get :: Path -> Code Value
+get :: Path -> Code Val
 get = liftF . Get
 
-getv :: Frame -> Name -> Code Value
+getv :: Frame -> Name -> Code Val
 getv f n = liftF (GetV f n)
 
 new :: Code Frame
@@ -118,16 +115,16 @@ new = liftF New
 curf :: Code Frame
 curf = liftF CurF
 
-withf :: Frame -> Code Value -> Code Value
+withf :: Frame -> Code Val -> Code Val
 withf f c = liftF (WithF f c)
 
 err :: String -> Code a
 err = liftF . Err
 
-callcc :: Code Value -> Code Value
+callcc :: Code Val -> Code Val
 callcc = liftF . CCC
 
-abort :: Code Value -> Code Value
+abort :: Code Val -> Code Val
 abort = liftF . Abort
 
 
@@ -135,7 +132,7 @@ abort = liftF . Abort
 --- object language interpreter ---
 -----------------------------------
 
-interp :: Expr -> Code Value
+interp :: Expr -> Code Val
 interp (Num i) = return (NumV i)
 interp (Fun e) = do
   f <- curf
@@ -168,7 +165,7 @@ data Result a = Final a
               | Stuck String
               deriving Show
 
-step :: Code Value -> HFT Val Code (Result Value)
+step :: Code Val -> HFT Val (Result Val)
 step (Stop a)   = trace "stopping" $ return (Final a)
 step (Step (SetL f l f') k) = trace "setl" $ do
   setLink f l f'
@@ -208,7 +205,7 @@ step (Step (Abort c) _) = trace ("aborting to: " ++ (show $! c)) $ do
   return (Disco c)
 
   
-steps :: Code Value -> HFT Val Code Value
+steps :: Code Val -> HFT Val Val
 steps c = do
   r <- step c
   case r of
@@ -222,7 +219,7 @@ steps c = do
       throwError s
 
 
-run :: Expr -> Either String Value
+run :: Expr -> Either String Val
 run e = mapRight fst $
         runExcept (runStateT (runReaderT (steps (interp e)) 0)
                              [HF (fromList []) (fromList [])])

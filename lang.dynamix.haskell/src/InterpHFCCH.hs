@@ -11,11 +11,7 @@ module InterpHFCCH where
 import Debug.Trace
 
 import Test.HUnit hiding (Path)
-import Data.Map.Strict (fromList)
-import Control.Monad.Reader (runReaderT)
-import Control.Monad.State (runStateT)
-import Control.Monad.Except (throwError, runExcept)
-import Data.Either.HT (mapRight)
+import Control.Monad.Except (throwError)
 import Control.Monad.Fail
 import Free
 import HeapFrame
@@ -40,20 +36,18 @@ lete e body = App (Fun body) e
 --- object language values ---
 ------------------------------
 
-data Val m = NumV Int | ClosV Expr Frame | ContV (Val m -> m (Val m))
+data Val = NumV Int | ClosV Expr Frame | ContV (Val -> Code Val)
 
-instance Eq (Val m) where
+instance Eq Val where
   NumV i1 == NumV i2 = i1 == i2
   ClosV e1 f1 == ClosV e2 f2 = e1 == e2 && f1 == f2
   _ == _ = False
 
-instance Show (Val m) where
+instance Show Val where
   show (NumV i) = show i
   show (ClosV e f) = show $ "<" ++ show e ++ ", " ++ show f ++ ">"
   show (ContV _) = "<cont>"
  
-type Value = Val (Free Cmd)
-
 
 ---------------------------------------
 --- meta-language commands and code ---
@@ -64,16 +58,16 @@ type Code  = Free Cmd
 data Cmd :: * -> * where
   -- heap frame fragment
   SetL  :: Frame -> Label -> Frame -> Cmd ()
-  SetV  :: Frame -> Name -> Value -> Cmd ()
-  Get   :: Path -> Cmd Value
-  GetV  :: Frame -> Name -> Cmd Value
+  SetV  :: Frame -> Name -> Val -> Cmd ()
+  Get   :: Path -> Cmd Val
+  GetV  :: Frame -> Name -> Cmd Val
   New   :: Cmd Frame
   CurF  :: Cmd Frame
-  WithF :: Frame -> Code Value -> Cmd Value
+  WithF :: Frame -> Code Val -> Cmd Val
 
   -- continuation fragment
-  CCC   :: Code Value -> Cmd Value
-  Abort :: Code Value -> Cmd Value
+  CCC   :: Code Val -> Cmd Val
+  Abort :: Code Val -> Cmd Val
 
   -- failure fragment
   Err   :: String -> Cmd a
@@ -104,13 +98,13 @@ instance Show a => Show (Code a) where
 setl :: Frame -> Label -> Frame -> Code ()
 setl f l f' = liftF (SetL f l f')
 
-setv :: Frame -> Name -> Value -> Code ()
+setv :: Frame -> Name -> Val -> Code ()
 setv f n v = liftF (SetV f n v)
 
-get :: Path -> Code Value
+get :: Path -> Code Val
 get = liftF . Get
 
-getv :: Frame -> Name -> Code Value
+getv :: Frame -> Name -> Code Val
 getv f n = liftF (GetV f n)
 
 new :: Code Frame
@@ -119,16 +113,16 @@ new = liftF New
 curf :: Code Frame
 curf = liftF CurF
 
-withf :: Frame -> Code Value -> Code Value
+withf :: Frame -> Code Val -> Code Val
 withf f c = liftF (WithF f c)
 
 err :: String -> Code a
 err = liftF . Err
 
-callcc :: Code Value -> Code Value
+callcc :: Code Val -> Code Val
 callcc = liftF . CCC
 
-abort :: Code Value -> Code Value
+abort :: Code Val -> Code Val
 abort = liftF . Abort
 
 
@@ -136,7 +130,7 @@ abort = liftF . Abort
 --- object language interpreter ---
 -----------------------------------
 
-interp :: Expr -> Code Value
+interp :: Expr -> Code Val
 interp (Num i) = return (NumV i)
 interp (Fun e) = do
   f <- curf
@@ -170,7 +164,7 @@ interp (CallCC e) = do
 -- - CPS+Defunct.
 -- - Stack-transform
 
-handle0' :: Cmd b -> (b -> Code Value) -> HFT Val Code Value
+handle0' :: Cmd b -> (b -> Code Val) -> HFT Val Val
 handle0' (SetL f l f') k = trace ("setl " ++ show f ++ " " ++ show l ++ " " ++ show f') $ do
   setLink f l f'
   handle0 (k ())
@@ -196,14 +190,14 @@ handle0' (WithF f c) k = trace ("withf " ++ show f) $ do
 handle0' (Err s) _ = trace "err" $
   throwError s
 
-handle0 :: Code Value -> HFT Val Code Value
+handle0 :: Code Val -> HFT Val Val
 handle0 (Stop x) = return x
 handle0 (Step x k) = handle0' x k
 
 
 -- inlining
 
-handle1 :: Code Value -> HFT Val Code Value
+handle1 :: Code Val -> HFT Val Val
 handle1 (Stop x) = return x
 handle1 (Step (SetL f l f') k) = trace ("setl " ++ show f ++ " " ++ show l ++ " " ++ show f') $ do
   setLink f l f'
@@ -233,7 +227,7 @@ handle1 (Step (Err s) _) = trace "err" $
 
 -- cps
 
-handle2 :: Code Value -> (Value -> HFT Val Code Value) -> HFT Val Code Value
+handle2 :: Code Val -> (Val -> HFT Val Val) -> HFT Val Val
 handle2 (Stop x) c = c x
 handle2 (Step (SetL f l f') k) c = trace ("setl " ++ show f ++ " " ++ show l ++ " " ++ show f') $ do
   setLink f l f'
@@ -263,9 +257,9 @@ handle2 (Step (Err s) _) _ = trace "err" $
 -- defunctionalize
 
 data Ctx = MT
-         | WITHF (Value -> Code Value) Ctx
+         | WITHF (Val -> Code Val) Ctx
 
-handle3 :: Code Value -> Ctx -> HFT Val Code Value
+handle3 :: Code Val -> Ctx -> HFT Val Val
 handle3 (Stop x) c = apply_cont c x
 handle3 (Step (SetL f l f') k) c = trace ("setl " ++ show f ++ " " ++ show l ++ " " ++ show f') $ do
   setLink f l f'
@@ -291,14 +285,14 @@ handle3 (Step (WithF f cmd) k) c = trace ("withf " ++ show f) $ do
 handle3 (Step (Err s) _) _ = trace "err" $
   throwError s
 
-apply_cont :: Ctx -> Value -> HFT Val Code Value
+apply_cont :: Ctx -> Val -> HFT Val Val
 apply_cont MT v = return v
 apply_cont (WITHF k c) v = handle3 (k v) c
 
 
 -- list transform and inline
 
-handle4 :: Code Value -> [(Value -> Code Value)] -> HFT Val Code Value
+handle4 :: Code Val -> [(Val -> Code Val)] -> HFT Val Val
 handle4 (Stop x) [] = return x
 handle4 (Stop x) (c : cs) = handle4 (c x) cs
 handle4 (Step (SetL f l f') k) c = trace ("setl " ++ show f ++ " " ++ show l ++ " " ++ show f') $ do
@@ -328,9 +322,9 @@ handle4 (Step (Err s) _) _ = trace "err" $
 
 -- factor the fold
 
-type Stack = [(Value -> Code Value)]
+type Stack = [(Val -> Code Val)]
 
-handler5 :: Cmd a -> (a -> Code Value) -> Stack -> HFT Val Code Value
+handler5 :: Cmd a -> (a -> Code Val) -> Stack -> HFT Val Val
 handler5 (SetL f l f') k s = trace ("setl " ++ show f ++ " " ++ show l ++ " " ++ show f') $ do
   setLink f l f'
   handle5 (k ()) s
@@ -364,7 +358,7 @@ handler5 (Abort c) _ _ = do
   handle5 c []
 
 
-handle5 :: Code Value -> Stack -> HFT Val Code Value
+handle5 :: Code Val -> Stack -> HFT Val Val
 handle5 x s = foldC handler5 s x
 
 
@@ -379,7 +373,7 @@ test_app1 :: Expr
 test_app1 = App (App (Fun (Fun (Var (PStep P (PPos 0))))) (Num 123)) (Num 0)
 
 
-run :: Expr -> Either String Value
+run :: Expr -> Either String Val
 run e = runHFT (handle5 (interp e) [])
 
 -- TODO: more...
