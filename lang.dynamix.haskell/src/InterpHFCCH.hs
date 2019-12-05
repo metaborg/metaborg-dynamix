@@ -380,9 +380,7 @@ test_app1 = App (App (Fun (Fun (Var (PStep P (PPos 0))))) (Num 123)) (Num 0)
 
 
 run :: Expr -> Either String Value
-run e = mapRight fst $
-        runExcept (runStateT (runReaderT (handle5 (interp e) []) 0)
-                             [HF (fromList []) (fromList [])])
+run e = runHFT (handle5 (interp e) [])
 
 -- TODO: more...
 testcc_simple :: Expr

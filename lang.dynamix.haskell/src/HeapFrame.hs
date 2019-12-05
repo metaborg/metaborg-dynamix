@@ -6,9 +6,10 @@
 module HeapFrame where
 
 import Data.Map.Strict
-import Control.Monad.State (StateT, get, put)
-import Control.Monad.Reader (ReaderT, local, ask)
-import Control.Monad.Except (Except)
+import Control.Monad.State (StateT, get, put, runStateT)
+import Control.Monad.Reader (ReaderT, local, ask, runReaderT)
+import Control.Monad.Except (Except, runExcept)
+import Data.Either.HT (mapRight)
 
 
 ------------------------
@@ -59,9 +60,9 @@ update' (_ : xs) 0 x = x : xs
 update' (x : xs) i y = x : update' xs (i - 1) y
 
 
-------------------------------------
---- heap/frame monad transformer ---
-------------------------------------
+------------------------
+--- heap/frame monad ---
+------------------------
 
 type HFT val m a = ReaderT Frame (StateT [HeapFrame val m] (Except String)) a
 
@@ -128,3 +129,12 @@ allocFrame = do
   putHeap (h ++ [HF (fromList []) (fromList [])])
   return (length h)
 
+
+-----------
+--- run ---
+-----------
+
+runHFT :: HFT val m a -> Either String a
+runHFT e = mapRight fst $
+           runExcept (runStateT (runReaderT e 0)
+                                [HF (fromList []) (fromList [])])
