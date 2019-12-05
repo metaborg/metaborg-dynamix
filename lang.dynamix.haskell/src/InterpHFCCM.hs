@@ -21,7 +21,7 @@ import Control.Monad.Except (throwError)
 --- object language syntax ---
 ------------------------------
 
-data Expr = Num Int | Fun Expr | App Expr Expr | Var Path
+data Expr = Num Int | Plus Expr Expr | Fun Expr | App Expr Expr | Var Path
           | CallCC Expr
           deriving Show
           deriving Eq
@@ -134,6 +134,10 @@ abort = liftF . Abort
 
 interp :: Expr -> Code Value
 interp (Num i) = return (NumV i)
+interp (Plus e1 e2) = do
+  (NumV i1) <- interp e1
+  (NumV i2) <- interp e2
+  return (NumV (i1 + i2))
 interp (Fun e) = do
   f <- curf
   return (ClosV e f)
@@ -225,9 +229,25 @@ testcc_app :: Expr
 testcc_app = lete (Fun (CallCC (App (Var (PPos 0)) (Var (PStep P (PPos 0))))))
                   (App (App (App (Var (PPos 0)) (Num 42)) (Num 0)) (Num (- 1)))
 
+-- (+ 5 (call/cc 
+--  (lambda (k) (+ 6 (k 7)))))) ; answer: 12
+testcc_add1 :: Expr
+testcc_add1 =
+  Plus (Num 5)
+       (CallCC (Plus (Num 6) (App (Var (PPos 0)) (Num 7))))
+
+-- (+ 3 (call/cc (lambda (k) (+ 2 5)))))  ; answer: 10
+testcc_add2 :: Expr
+testcc_add2 =
+  Plus (Num 3)
+       (CallCC (Plus (Num 2) (Num 5)))
+
+
 tests :: Test
 tests = test [ "test_app0" ~: "simple app" ~: Right (NumV 19) ~=? run test_app0
              , "test_app1" ~: "nested app" ~: Right (NumV 123) ~=? run test_app1
              , "test_cc1" ~: "cc simple" ~: Right (NumV 3) ~=? run testcc_simple
-             , "test_cc2" ~: "cc app" ~: Right (NumV 42) ~=? run testcc_app ]
+             , "test_cc2" ~: "cc app" ~: Right (NumV 42) ~=? run testcc_app
+             , "test_cc3" ~: "cc add 1" ~: Right (NumV 12) ~=? run testcc_add1
+             , "test_cc4" ~: "cc add 2" ~: Right (NumV 10) ~=? run testcc_add2 ]
 
