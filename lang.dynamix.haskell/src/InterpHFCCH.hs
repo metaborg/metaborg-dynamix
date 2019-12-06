@@ -67,7 +67,7 @@ data Cmd :: * -> * where
 
   -- continuation fragment
   CCC   :: Code Val -> Cmd Val
-  Abort :: Code Val -> Cmd Val
+  Abort :: Stack -> Code Val -> Cmd Val
 
   -- failure fragment
   Err   :: String -> Cmd a
@@ -84,7 +84,7 @@ instance Show (Cmd a) where
   show CurF = "CurF"
   show (WithF f c) = "(WithF " ++ show f ++ " " ++ fromFree 0 c ++ ")"
   show (CCC c) = "(CCC " ++ fromFree 0 c ++ ")"
-  show (Abort c) = "(Abort " ++ fromFree 0 c ++ ")"
+  show (Abort s c) = "(Abort _ " ++ fromFree 0 c ++ ")"
   show (Err s) = "(Err " ++ s ++ ")"
 
 instance Show a => Show (Code a) where
@@ -122,8 +122,8 @@ err = liftF . Err
 callcc :: Code Val -> Code Val
 callcc = liftF . CCC
 
-abort :: Code Val -> Code Val
-abort = liftF . Abort
+abort :: Stack -> Code Val -> Code Val
+abort s c = liftF (Abort s c)
 
 
 -----------------------------------
@@ -171,11 +171,11 @@ handle0' (SetL f l f') k = trace ("setl " ++ show f ++ " " ++ show l ++ " " ++ s
 handle0' (SetV f n v) k = trace ("setv " ++ show f ++ " " ++ show n ++ " " ++ show v) $ do
   setValue f n v
   handle0 (k ())
-handle0' (Get p) k = trace (show (Step (Get p) k)) $ do
+handle0' (Get p) k = do
   f <- curFrame
   v <- followPath f p
-  trace ("got: " ++ show v) $ handle0 (k v)
-handle0' (GetV f n) k = trace (show (Step (GetV f n) k)) $ do
+  handle0 (k v)
+handle0' (GetV f n) k = do
   v <- getValue f n
   handle0 (k v)
 handle0' New k = trace "new" $ do
@@ -205,11 +205,11 @@ handle1 (Step (SetL f l f') k) = trace ("setl " ++ show f ++ " " ++ show l ++ " 
 handle1 (Step (SetV f n v) k) = trace ("setv " ++ show f ++ " " ++ show n ++ " " ++ show v) $ do
   setValue f n v
   handle1 (k ())
-handle1 (Step (Get p) k) = trace (show (Step (Get p) k)) $ do
+handle1 (Step (Get p) k) = do
   f <- curFrame
   v <- followPath f p
   trace ("got: " ++ show v) $ handle1 (k v)
-handle1 (Step (GetV f n) k) = trace (show (Step (GetV f n) k)) $ do
+handle1 (Step (GetV f n) k) = do
   v <- getValue f n
   handle1 (k v)
 handle1 (Step New k) = trace "new" $ do
@@ -235,11 +235,11 @@ handle2 (Step (SetL f l f') k) c = trace ("setl " ++ show f ++ " " ++ show l ++ 
 handle2 (Step (SetV f n v) k) c = trace ("setv " ++ show f ++ " " ++ show n ++ " " ++ show v) $ do
   setValue f n v
   handle2 (k ()) c
-handle2 (Step (Get p) k) c = trace (show (Step (Get p) k)) $ do
+handle2 (Step (Get p) k) c = do
   f <- curFrame
   v <- followPath f p
   trace ("got: " ++ show v) $ handle2 (k v) c
-handle2 (Step (GetV f n) k) c = trace (show (Step (GetV f n) k)) $ do
+handle2 (Step (GetV f n) k) c = do
   v <- getValue f n
   handle2 (k v) c
 handle2 (Step New k) c = trace "new" $ do
@@ -249,7 +249,8 @@ handle2 (Step CurF k) c = trace "curf" $ do
   f <- curFrame
   handle2 (k f) c
 handle2 (Step (WithF f cmd) k) c = trace ("withf " ++ show f) $ do
-  withFrame f (handle2 cmd (\ v -> handle2 (k v) c))
+  f' <- curFrame
+  withFrame f (handle2 cmd (\ v -> withFrame f' (handle2 (k v) c)))
 handle2 (Step (Err s) _) _ = trace "err" $
   throwError s
 
@@ -257,7 +258,7 @@ handle2 (Step (Err s) _) _ = trace "err" $
 -- defunctionalize
 
 data Ctx = MT
-         | WITHF (Val -> Code Val) Ctx
+         | WITHF Frame (Val -> Code Val) Ctx
 
 handle3 :: Code Val -> Ctx -> HFT Val Val
 handle3 (Stop x) c = apply_cont c x
@@ -267,11 +268,11 @@ handle3 (Step (SetL f l f') k) c = trace ("setl " ++ show f ++ " " ++ show l ++ 
 handle3 (Step (SetV f n v) k) c = trace ("setv " ++ show f ++ " " ++ show n ++ " " ++ show v) $ do
   setValue f n v
   handle3 (k ()) c
-handle3 (Step (Get p) k) c = trace (show (Step (Get p) k)) $ do
+handle3 (Step (Get p) k) c = do
   f <- curFrame
   v <- followPath f p
   trace ("got: " ++ show v) $ handle3 (k v) c
-handle3 (Step (GetV f n) k) c = trace (show (Step (GetV f n) k)) $ do
+handle3 (Step (GetV f n) k) c = do
   v <- getValue f n
   handle3 (k v) c
 handle3 (Step New k) c = trace "new" $ do
@@ -281,31 +282,32 @@ handle3 (Step CurF k) c = trace "curf" $ do
   f <- curFrame
   handle3 (k f) c
 handle3 (Step (WithF f cmd) k) c = trace ("withf " ++ show f) $ do
-  withFrame f (handle3 cmd (WITHF k c))
+  f' <- curFrame
+  withFrame f (handle3 cmd (WITHF f' k c))
 handle3 (Step (Err s) _) _ = trace "err" $
   throwError s
 
 apply_cont :: Ctx -> Val -> HFT Val Val
 apply_cont MT v = return v
-apply_cont (WITHF k c) v = handle3 (k v) c
+apply_cont (WITHF f' k c) v = withFrame f' (handle3 (k v) c)
 
 
 -- list transform and inline
 
-handle4 :: Code Val -> [(Val -> Code Val)] -> HFT Val Val
+handle4 :: Code Val -> [(Frame , Val -> Code Val)] -> HFT Val Val
 handle4 (Stop x) [] = return x
-handle4 (Stop x) (c : cs) = handle4 (c x) cs
+handle4 (Stop x) ((f , c) : cs) = withFrame f (handle4 (c x) cs)
 handle4 (Step (SetL f l f') k) c = trace ("setl " ++ show f ++ " " ++ show l ++ " " ++ show f') $ do
   setLink f l f'
   handle4 (k ()) c
 handle4 (Step (SetV f n v) k) c = trace ("setv " ++ show f ++ " " ++ show n ++ " " ++ show v) $ do
   setValue f n v
   handle4 (k ()) c
-handle4 (Step (Get p) k) c = trace (show (Step (Get p) k)) $ do
+handle4 (Step (Get p) k) c = do
   f <- curFrame
   v <- followPath f p
   trace ("got: " ++ show v) $ handle4 (k v) c
-handle4 (Step (GetV f n) k) c = trace (show (Step (GetV f n) k)) $ do
+handle4 (Step (GetV f n) k) c = do
   v <- getValue f n
   handle4 (k v) c
 handle4 (Step New k) c = trace "new" $ do
@@ -315,14 +317,15 @@ handle4 (Step CurF k) c = trace "curf" $ do
   f <- curFrame
   handle4 (k f) c
 handle4 (Step (WithF f cmd) k) c = trace ("withf " ++ show f) $ do
-  withFrame f (handle4 cmd (k:c))
+  f' <- curFrame
+  withFrame f (handle4 cmd ((f' , k):c))
 handle4 (Step (Err s) _) _ = trace "err" $
   throwError s
 
 
 -- factor the fold
 
-type Stack = [(Val -> Code Val)]
+type Stack = [(Frame , Val -> Code Val)]
 
 handler5 :: Cmd a -> (a -> Code Val) -> Stack -> HFT Val Val
 handler5 (SetL f l f') k s = trace ("setl " ++ show f ++ " " ++ show l ++ " " ++ show f') $ do
@@ -331,11 +334,11 @@ handler5 (SetL f l f') k s = trace ("setl " ++ show f ++ " " ++ show l ++ " " ++
 handler5 (SetV f n v) k s = trace ("setv " ++ show f ++ " " ++ show n ++ " " ++ show v) $ do
   setValue f n v
   handle5 (k ()) s
-handler5 (Get p) k s = trace (show (Step (Get p) k)) $ do
+handler5 (Get p) k s = do
   f <- curFrame
   v <- followPath f p
   trace ("got: " ++ show v) $ handle5 (k v) s
-handler5 (GetV f n) k s = trace (show (Step (GetV f n) k)) $ do
+handler5 (GetV f n) k s = do
   v <- getValue f n
   handle5 (k v) s
 handler5 New k s = trace "new" $ do
@@ -345,21 +348,31 @@ handler5 CurF k s = trace "curf" $ do
   f <- curFrame
   handle5 (k f) s
 handler5 (WithF f c) k s = trace ("withf " ++ show f) $ do
-  withFrame f (handle5 c (k : s))
+  f' <- curFrame
+  withFrame f (handle5 c ((f' , k) : s))
 handler5 (Err m) _ s = trace "err" $
   throwError m
 handler5 (CCC c) k s = do
   f  <- curFrame
   f' <- allocFrame
   setLink f' P f
-  setValue f' 0 (ContV (abort . k))
+  setValue f' 0 (ContV (abort s . k))
   handle5 (do v <- withf f' c; k v) s
-handler5 (Abort c) _ _ = do
-  handle5 c []
+handler5 (Abort s c) _ _ = do
+  handle5 c s
 
+-- -- stack handler
+-- foldC :: Monad m =>
+--          (forall b. c b -> (b -> Free c a) -> [(Frame , a -> Free c a)] -> m a) ->
+--          [(Frame , a -> Free c a)] -> Free c a -> m a
+-- foldC _ [] (Stop x) = return x
+-- foldC f (c : cs) (Stop x) = foldC f cs (c x)
+-- foldC f c (Step x k) = f x k c
 
 handle5 :: Code Val -> Stack -> HFT Val Val
-handle5 x s = foldC handler5 s x
+handle5 (Stop x) [] = return x
+handle5 (Stop x) ((f , c) : s) = withFrame f (handle5 (c x) s)
+handle5 (Step x k) s = handler5 x k s
 
 
 -------------
@@ -372,6 +385,8 @@ test_app0 = App (Fun (Var (PPos 0))) (Num 19)
 test_app1 :: Expr
 test_app1 = App (App (Fun (Fun (Var (PStep P (PPos 0))))) (Num 123)) (Num 0)
 
+test_app2 :: Expr
+test_app2 = App (Fun (App (Fun (Var (PPos 0))) (Var (PPos 0)))) (Num 1)
 
 run :: Expr -> Either String Val
 run e = runHFT (handle5 (interp e) [])
@@ -386,9 +401,14 @@ testcc_app :: Expr
 testcc_app = lete (Fun (CallCC (App (Var (PPos 0)) (Var (PStep P (PPos 0))))))
                   (App (App (App (Var (PPos 0)) (Num 42)) (Num 0)) (Num (- 1)))
 
+testcc_app2 :: Expr
+testcc_app2 = (App (Fun (App (CallCC (App (Var (PPos 0)) (Fun (Var (PPos 0))))) (Var (PPos 0)))) (Num 2))
+
 tests :: Test
 tests = test [ "test_app0" ~: "simple app" ~: Right (NumV 19) ~=? run test_app0
              , "test_app1" ~: "nested app" ~: Right (NumV 123) ~=? run test_app1
+             , "test_app2" ~: "nested app2" ~: Right (NumV 1) ~=? run test_app2
              , "test_cc1" ~: "cc simple" ~: Right (NumV 3) ~=? run testcc_simple
-             , "test_cc2" ~: "cc app" ~: Right (NumV 42) ~=? run testcc_app ]
+             , "test_cc2" ~: "cc app" ~: Right (NumV 42) ~=? run testcc_app
+             , "test_cc2" ~: "cc app2" ~: Right (NumV 2) ~=? run testcc_app2 ]
 

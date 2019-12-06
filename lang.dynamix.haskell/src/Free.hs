@@ -70,14 +70,6 @@ foldS :: Monad m =>
 foldS _ (Stop x) = return x
 foldS f (Step c k) = f c k
 
--- continuation handler
-foldC :: Monad m =>
-         (forall b. c b -> (b -> Free c a) -> [(a -> Free c a)] -> m a) ->
-         [(a -> Free c a)] -> Free c a -> m a
-foldC _ [] (Stop x) = return x
-foldC f (c : cs) (Stop x) = foldC f cs (c x)
-foldC f c (Step x k) = f x k c
-
 
 ----------------------
 --- pretty-printer ---
@@ -89,7 +81,7 @@ newtype FVar = FVar Int
 instance Exception FVar
 
 fromFree :: (forall b. Show (c b), Show a) => Int -> Free c a -> String
-fromFree !free xOrVar = unsafePerformIO $ do
+fromFree free !xOrVar = unsafePerformIO $ do
   ex <- evaluate xOrVar
   case ex of
     Stop x -> do

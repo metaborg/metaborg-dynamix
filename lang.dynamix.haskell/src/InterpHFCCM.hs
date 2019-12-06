@@ -15,6 +15,7 @@ import Control.Monad.Fail
 import Free
 import HeapFrameStack
 import Control.Monad.Except (throwError)
+import Control.Monad.Reader (local, ask)
 
 
 ------------------------------
@@ -67,7 +68,7 @@ data Cmd :: * -> * where
 
   -- continuation fragment
   CCC   :: Code Val -> Cmd Val
-  Abort :: Code Val -> Cmd Val
+  Abort :: Stack Val Code () -> Code Val -> Cmd Val
 
   -- failure fragment
   Err   :: String -> Cmd a
@@ -84,7 +85,7 @@ instance Show (Cmd a) where
   show CurF = "CurF"
   show (WithF f c) = "(WithF " ++ show f ++ " " ++ fromFree 0 c ++ ")"
   show (CCC c) = "(CCC " ++ fromFree 0 c ++ ")"
-  show (Abort c) = "(Abort " ++ fromFree 0 c ++ ")"
+  show (Abort s c) = "(Abort " ++ fromFree 0 c ++ ")"
   show (Err s) = "(Err " ++ s ++ ")"
 
 instance Show a => Show (Code a) where
@@ -122,8 +123,8 @@ err = liftF . Err
 callcc :: Code Val -> Code Val
 callcc = liftF . CCC
 
-abort :: Code Val -> Code Val
-abort = liftF . Abort
+abort :: Stack Val Code () -> Code Val -> Code Val
+abort s c = liftF (Abort s c)
 
 
 -----------------------------------
@@ -184,7 +185,9 @@ handler CurF k = do
   f <- curFrame
   handle (k f)
 handler (WithF f c) k = do
-  withFrameCont f k (handle c)
+  sls <- curSlots
+  pushStack f k sls
+  handle c
 handler (Err m) _ =
   throwError m
 
@@ -194,16 +197,23 @@ handler (CCC c) k = do
   f  <- curFrame
   f' <- allocFrame
   setLink f' P f
-  setValue f' 0 (ContV (abort . k))
+  s <- getStack
+  setValue f' 0 (ContV (abort s . k))
   handle (do v <- withf f' c; k v)
-handler (Abort c) _ = do
-  withConts [] (handle c)
+handler (Abort s c) _ = do
+  modifyStack (\ _ -> s)
+  handle c
 
 
 handle :: Code Val -> M Val
-handle x = do
-  s <- curConts
-  foldC (\ c k s' -> withConts s' (handler c k)) s x
+handle (Stop x) = do
+  s <- getStack
+  case s of
+    [] -> return x
+    (sf : s') -> do
+      modifyStack (\ _ -> s')
+      handle (knt sf x)
+handle (Step x k) = handler x k
 
 
 -----------
@@ -211,7 +221,7 @@ handle x = do
 -----------
 
 run :: Expr -> Either String Val
-run e = runHFT (handle (interp e)) ()
+run e = runHFT (handle (interp e)) Stop ()
 
 
 -------------
@@ -229,11 +239,8 @@ test_app1 = App (App (Fun (Fun (Var (PStep P (PPos 0))))) (Num 123)) (Num 0)
 testcc_simple :: Expr
 testcc_simple = CallCC (App (Var (PPos 0)) (Num 3))
 
--- let x = \ y -> callcc (\ k -> k y) in
--- (((x 42) 0) -1)
-testcc_app :: Expr
-testcc_app = lete (Fun (CallCC (App (Var (PPos 0)) (Var (PStep P (PPos 0))))))
-                  (App (App (App (Var (PPos 0)) (Num 42)) (Num 0)) (Num (- 1)))
+testcc_app2 :: Expr
+testcc_app2 = (App (Fun (App (CallCC (App (Var (PPos 0)) (Fun (Var (PPos 0))))) (Var (PPos 0)))) (Num 2))
 
 -- (+ 5 (call/cc 
 --  (lambda (k) (+ 6 (k 7)))))) ; answer: 12
@@ -253,7 +260,7 @@ tests :: Test
 tests = test [ "test_app0" ~: "simple app" ~: Right (NumV 19) ~=? run test_app0
              , "test_app1" ~: "nested app" ~: Right (NumV 123) ~=? run test_app1
              , "test_cc1" ~: "cc simple" ~: Right (NumV 3) ~=? run testcc_simple
-             , "test_cc2" ~: "cc app" ~: Right (NumV 42) ~=? run testcc_app
+             , "test_cc2" ~: "cc app2" ~: Right (NumV 2) ~=? run testcc_app2
              , "test_cc3" ~: "cc add 1" ~: Right (NumV 12) ~=? run testcc_add1
              , "test_cc4" ~: "cc add 2" ~: Right (NumV 10) ~=? run testcc_add2 ]
 

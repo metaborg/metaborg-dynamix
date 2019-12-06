@@ -1,3 +1,5 @@
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE TypeSynonymInstances #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE KindSignatures #-}
 {-# LANGUAGE GADTs #-}
@@ -6,9 +8,10 @@
 module HeapFrameStack where
 
 import Data.Map.Strict
-import Control.Monad.State (runStateT, StateT, get, put)
+import Control.Monad.State (runStateT, StateT, get, modify)
 import Control.Monad.Reader (runReaderT, ReaderT, local, ask)
-import Control.Monad.Except (runExcept, Except)
+import Control.Monad.Except (runExcept, Except, throwError)
+import Control.Monad.Fail (MonadFail, fail)
 import Data.Either.HT (mapRight)
 
 
@@ -53,7 +56,15 @@ type Name = Int
 --- stacks and stack slots ---
 ------------------------------
 
-type Stack val code slots = ([(val -> code val)], slots)
+data StackFrame val code slots = SF { frm :: Frame
+                                    , knt :: val -> code val
+                                    , lns :: [Point]
+                                    , sls :: slots
+                                    }
+
+type Stack val code slots = [StackFrame val code slots]
+
+type Point = Int
 
 
 -----------
@@ -70,14 +81,25 @@ update' (x : xs) i y = x : update' xs (i - 1) y
 --- heap/frame monad ---
 ------------------------
 
-type HFT val code slots a = ReaderT (Frame, Stack val code slots)
-                                    (StateT [HeapFrame val] (Except String)) a
+type HFT val code slots =
+  ReaderT Point (StateT (Heap val, Stack val code slots) (Except String))
+
+instance {-# OVERLAPPING #-} MonadFail (HFT val code slots) where
+  fail = throwError
+
+
+-----------------------------
+--- heap/frame operations ---
+-----------------------------
 
 getHeap :: HFT val code sslots (Heap val)
-getHeap = get
+getHeap = do
+  (h , _) <- get
+  return h
 
-putHeap :: Heap val -> HFT val code sslots ()
-putHeap = put
+modifyHeap :: (Heap val -> Heap val) -> HFT val code sslots ()
+modifyHeap g = do
+  modify (\ (h , s) -> (g h , s))
 
 getFrame :: Frame -> HFT val code sslots (HeapFrame val)
 getFrame i = do
@@ -86,8 +108,7 @@ getFrame i = do
 
 putFrame :: Frame -> HeapFrame val -> HFT val code slots ()
 putFrame i hf = do
-  h <- getHeap
-  putHeap (update' h i hf)
+  modifyHeap (\ h -> update' h i hf)
 
 setLink :: Frame -> Label -> Frame -> HFT val code slots ()
 setLink f l f' = do
@@ -110,14 +131,6 @@ getValue f n = do
   hf <- getFrame f
   return (slots hf ! n)
 
-curFrame :: HFT val code slots Frame
-curFrame = do
-  (f , _) <- ask
-  return f
-
-withFrame :: Frame -> HFT val code slots a -> HFT val code slots a
-withFrame f m = local (\ (_ , s) -> (f , s)) m
-
 followPath :: Frame -> Path -> HFT val code slots val
 followPath f (PPos n) = do
   getValue f n
@@ -135,33 +148,54 @@ followLinks f (l : ls) = do
 allocFrame :: HFT val code slots Frame
 allocFrame = do
   h <- getHeap
-  putHeap (h ++ [HF (fromList []) (fromList [])])
+  modifyHeap (\ h -> h ++ [HF (fromList []) (fromList [])])
   return (length h)
 
-pushCont :: (val -> code val) -> HFT val code slots a -> HFT val code slots a
-pushCont k m = local (\ (f , (s , sslots)) -> (f , (k : s , sslots))) m
 
-localS :: (slots -> slots) -> HFT val code slots a -> HFT val code slots a
-localS g m = local (\ (f , (s , sslots)) -> (f , (s , g sslots))) m
+------------------------
+--- stack operations ---
+------------------------
 
-curConts :: HFT val code slots [(val -> code val)]
-curConts = do
-  (_ , (s , _)) <- ask
+curPoint :: HFT val code slots Point
+curPoint = ask
+
+getStack :: HFT val code slots (Stack val code slots)
+getStack = do
+  (_ , s) <- get
   return s
 
-withConts :: [(val -> code val)] -> HFT val code slots a -> HFT val code slots a
-withConts s m = local (\ (f , (_ , sslots)) -> (f , (s , sslots))) m
+modifyStack :: (Stack val code slots -> Stack val code slots) ->
+               HFT val code slots ()
+modifyStack g =
+  modify (\ (h , s) -> (h , g s))
 
-withFrameCont :: Frame -> (val -> code val) -> HFT val code slots a ->
-                 HFT val code slots a
-withFrameCont f k m = local (\ (_ , (ks , ss)) -> (f , (k : ks , ss))) m
+pushStack :: Frame -> (val -> code val) -> slots -> HFT val code slots Point
+pushStack f k sls = do
+  p <- curPoint
+  s <- getStack
+  modifyStack (\ s -> s ++ [SF f k [p] sls])
+  return (length s)
+
+curFrame :: HFT val code slots Frame
+curFrame = do
+  p <- curPoint
+  s <- getStack
+  return (frm (s !! p))
+
+curSlots :: HFT val code slots slots
+curSlots = do
+  p <- curPoint
+  s <- getStack
+  return (sls (s !! p))
+
 
 
 -----------
 --- run ---
 -----------
 
-runHFT :: HFT val code slots a -> slots -> Either String a
-runHFT e ss = mapRight fst $
-              runExcept (runStateT (runReaderT e (0 , ([] , ss)))
-                                   [HF (fromList []) (fromList [])])
+runHFT :: HFT val code slots a -> (val -> code val) -> slots -> Either String a
+runHFT e ctx ss = mapRight fst $
+                  runExcept (runStateT (runReaderT e 0)
+                                       ([HF (fromList []) (fromList [])],
+                                        [SF 0 ctx [] ss]))
