@@ -81,7 +81,7 @@ newtype FVar = FVar Int
 instance Exception FVar
 
 fromFree :: (forall b. Show (c b), Show a) => Int -> Free c a -> String
-fromFree free !xOrVar = unsafePerformIO $ do
+fromFree free xOrVar = unsafePerformIO $ do
   ex <- evaluate xOrVar
   case ex of
     Stop x -> do
@@ -89,5 +89,6 @@ fromFree free !xOrVar = unsafePerformIO $ do
       return $ "(Stop " ++ show x' ++ ")"
     Step c k -> do
       c' <- evaluate c
-      return $ "(Step " ++ show c' ++ " (\\ x" ++ show free ++ " -> " ++ fromFree (free + 1) (k (throw (FVar free))) ++ "))"
+      k'  <- evaluate k
+      return $ "(Step " ++ show c' ++ " (\\ x" ++ show free ++ " -> " ++ fromFree (free + 1) (k' (throw (FVar free))) ++ "))"
   `catch` \ (FVar i) -> return $ "x" ++ show i

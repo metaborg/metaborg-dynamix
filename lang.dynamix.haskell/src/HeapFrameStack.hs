@@ -21,13 +21,8 @@ import Data.Either.HT (mapRight)
 
 type Heap val = [HeapFrame val]
 
-data HeapFrame val = HF (Map Label Frame) (Map Name val)
-
-links :: HeapFrame val -> Map Label Frame
-links (HF links _) = links
-
-slots :: HeapFrame val -> Map Name val
-slots (HF _ slots) = slots
+data HeapFrame val = HF { links :: (Map Label Frame)
+                        , slots :: (Map Name val) }
 
 type Frame = Int
 
@@ -52,17 +47,17 @@ data Label = P
 type Name = Int
 
 
-------------------------------
---- stacks and stack slots ---
-------------------------------
+--------------
+--- stacks ---
+--------------
 
-data StackFrame val code slots = SF { frm :: Frame
+data StackFrame val code marks = SF { frame :: Frame
                                     , knt :: val -> code val
-                                    , lns :: [Point]
-                                    , sls :: slots
+                                    , coupling :: Maybe Point
+                                    , marks :: marks
                                     }
 
-type Stack val code slots = [StackFrame val code slots]
+type Stack val code marks = [StackFrame val code marks]
 
 type Point = Int
 
@@ -81,10 +76,10 @@ update' (x : xs) i y = x : update' xs (i - 1) y
 --- heap/frame monad ---
 ------------------------
 
-type HFT val code slots =
-  ReaderT Point (StateT (Heap val, Stack val code slots) (Except String))
+type HFT val code marks =
+  StateT (Heap val, Stack val code marks, Point) (Except String)
 
-instance {-# OVERLAPPING #-} MonadFail (HFT val code slots) where
+instance {-# OVERLAPPING #-} MonadFail (HFT val code marks) where
   fail = throwError
 
 
@@ -92,60 +87,60 @@ instance {-# OVERLAPPING #-} MonadFail (HFT val code slots) where
 --- heap/frame operations ---
 -----------------------------
 
-getHeap :: HFT val code sslots (Heap val)
+getHeap :: HFT val code smarks (Heap val)
 getHeap = do
-  (h , _) <- get
+  (h , _, _) <- get
   return h
 
-modifyHeap :: (Heap val -> Heap val) -> HFT val code sslots ()
+modifyHeap :: (Heap val -> Heap val) -> HFT val code smarks ()
 modifyHeap g = do
-  modify (\ (h , s) -> (g h , s))
+  modify (\ (h , s, p) -> (g h , s, p))
 
-getFrame :: Frame -> HFT val code sslots (HeapFrame val)
+getFrame :: Frame -> HFT val code smarks (HeapFrame val)
 getFrame i = do
   h <- getHeap
   return (h !! i)
 
-putFrame :: Frame -> HeapFrame val -> HFT val code slots ()
+putFrame :: Frame -> HeapFrame val -> HFT val code marks ()
 putFrame i hf = do
   modifyHeap (\ h -> update' h i hf)
 
-setLink :: Frame -> Label -> Frame -> HFT val code slots ()
+setLink :: Frame -> Label -> Frame -> HFT val code marks ()
 setLink f l f' = do
-  (HF links slots) <- getFrame f
-  putFrame f (HF (insert l f' links) slots)
+  (HF links marks) <- getFrame f
+  putFrame f (HF (insert l f' links) marks)
 
-getLink :: Frame -> Label -> HFT val code slots Frame
+getLink :: Frame -> Label -> HFT val code marks Frame
 getLink f l = do
   hf <- getFrame f
   return (links hf ! l)
 
-setValue :: Frame -> Name -> val -> HFT val code slots ()
+setValue :: Frame -> Name -> val -> HFT val code marks ()
 setValue f n v = do
-  (HF links slots) <- getFrame f
-  putFrame f (HF links (insert n v slots))
+  (HF links marks) <- getFrame f
+  putFrame f (HF links (insert n v marks))
   return ()
 
-getValue :: Frame -> Name -> HFT val code slots val
+getValue :: Frame -> Name -> HFT val code marks val
 getValue f n = do
   hf <- getFrame f
   return (slots hf ! n)
 
-followPath :: Frame -> Path -> HFT val code slots val
+followPath :: Frame -> Path -> HFT val code marks val
 followPath f (PPos n) = do
   getValue f n
 followPath f (PStep l p) = do
   f' <- getLink f l
   followPath f' p
 
-followLinks :: Frame -> [Label] -> HFT val code slots Frame
+followLinks :: Frame -> [Label] -> HFT val code marks Frame
 followLinks f [] = do
   return f
 followLinks f (l : ls) = do
   f' <- getLink f l
   followLinks f' ls
 
-allocFrame :: HFT val code slots Frame
+allocFrame :: HFT val code marks Frame
 allocFrame = do
   h <- getHeap
   modifyHeap (\ h -> h ++ [HF (fromList []) (fromList [])])
@@ -156,46 +151,93 @@ allocFrame = do
 --- stack operations ---
 ------------------------
 
-curPoint :: HFT val code slots Point
-curPoint = ask
+curPoint :: HFT val code marks Point
+curPoint = do
+  (_ , _ , p) <- get
+  return p
 
-getStack :: HFT val code slots (Stack val code slots)
+getStack :: HFT val code marks (Stack val code marks)
 getStack = do
-  (_ , s) <- get
+  (_ , s, _) <- get
   return s
 
-modifyStack :: (Stack val code slots -> Stack val code slots) ->
-               HFT val code slots ()
-modifyStack g =
-  modify (\ (h , s) -> (h , g s))
+getStackFrame :: Point -> HFT val code marks (StackFrame val code marks)
+getStackFrame p = do
+  s <- getStack
+  return (s !! p)
 
-pushStack :: Frame -> (val -> code val) -> slots -> HFT val code slots Point
-pushStack f k sls = do
+modifyStack :: (Stack val code marks -> Stack val code marks) ->
+               HFT val code marks ()
+modifyStack g =
+  modify (\ (h , s , p) -> (h , g s , p))
+
+pushStack :: Frame -> (val -> code val) -> marks -> HFT val code marks Point
+pushStack f k mrks = do
   p <- curPoint
   s <- getStack
-  modifyStack (\ s -> s ++ [SF f k [p] sls])
+  modifyStack (\ s -> s ++ [SF f k (Just p) mrks])
   return (length s)
 
-curFrame :: HFT val code slots Frame
+allocStack :: Frame -> (val -> code val) -> Maybe Point -> marks -> HFT val code marks Point
+allocStack f k p mrks = do
+  s <- getStack
+  modifyStack (\ s -> s ++ [SF f k p mrks])
+  return (length s)
+
+curFrame :: HFT val code marks Frame
 curFrame = do
   p <- curPoint
-  s <- getStack
-  return (frm (s !! p))
+  sf <- getStackFrame p
+  return (frame sf)
 
-curSlots :: HFT val code slots slots
-curSlots = do
+curMarks :: HFT val code marks marks
+curMarks = do
   p <- curPoint
   s <- getStack
-  return (sls (s !! p))
+  return (marks (s !! p))
 
+curCoupling :: HFT val code marks (Maybe Point)
+curCoupling = do
+  p <- curPoint
+  s <- getStack
+  return (coupling (s !! p))
 
+setPoint :: Point -> HFT val code marks ()
+setPoint p =
+  modify (\ (h , s , _) -> (h , s , p))
+
+foldLinksUntil :: Point -> b ->
+                  (marks -> Bool) ->
+                  (Point -> b -> HFT val code marks b) ->
+                  HFT val code marks b
+foldLinksUntil p b c f = do
+  s <- getStack
+  let sf = s !! p
+  case coupling sf of
+    Just p' ->
+      if (c (marks sf))
+      then f p' b
+      else do
+        x <- foldLinksUntil p' b c f
+        f p x
+    Nothing ->
+      f p b
+    
+copyAndLink :: Point -> Point ->
+               HFT val code marks Point
+copyAndLink p cpl = do
+  sf <- getStackFrame p
+  s <- getStack
+  modifyStack (\ s -> s ++ [sf { coupling = Just cpl }])
+  return (length s)
 
 -----------
 --- run ---
 -----------
 
-runHFT :: HFT val code slots a -> (val -> code val) -> slots -> Either String a
+runHFT :: HFT val code marks a -> (val -> code val) -> marks -> Either String a
 runHFT e ctx ss = mapRight fst $
-                  runExcept (runStateT (runReaderT e 0)
+                  runExcept (runStateT e
                                        ([HF (fromList []) (fromList [])],
-                                        [SF 0 ctx [] ss]))
+                                        [SF 0 ctx Nothing ss],
+                                        0))

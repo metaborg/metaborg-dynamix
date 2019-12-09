@@ -8,45 +8,51 @@
 
 module Dynamix where
 
-import Debug.Trace
+-- import Debug.Trace
 
-import Test.HUnit hiding (Path)
+-- import Test.HUnit hiding (Path)
 import Control.Monad.Fail
 import Free
 import HeapFrameStack
 import Control.Monad.Except (throwError)
-import Control.Monad.Reader (local, ask)
 
 
 ---------------------------------------
 --- meta-language commands and code ---
 ---------------------------------------
 
-type Code val = Free (Cmd val)
+type Code val marks = Free (Cmd val marks)
 
-type Cont val = (Point , val -> Code val val)
+type Cont val marks = (Point , val -> Code val marks val)
 
-data Cmd val :: * -> * where
+data Cmd val marks :: * -> * where
   -- heap frame fragment
-  SetL  :: Frame -> Label -> Frame -> Cmd val ()
-  SetV  :: Frame -> Name -> val -> Cmd val ()
-  Get   :: Path -> Cmd val val
-  GetV  :: Frame -> Name -> Cmd val val
-  New   :: Cmd val Frame
-  CurF  :: Cmd val Frame
-  WithF :: Frame -> Code val val -> Cmd val val
+  SetL  :: Frame -> Label -> Frame -> Cmd val marks ()
+  SetV  :: Frame -> Name -> val -> Cmd val marks ()
+  Get   :: Path -> Cmd val marks val
+  GetV  :: Frame -> Name -> Cmd val marks val
+  New   :: Cmd val marks Frame
+  CurF  :: Cmd val marks Frame
+  WithF :: Frame -> Code val marks val -> Cmd val marks val
 
   -- control fragment
-  Mark  :: (Cont val -> Code val val) -> Cmd val val
-  Invk  :: Cont val -> val -> Cmd val val
+  Mark  :: (Cont val marks -> Code val marks val) -> Cmd val marks val
+  Mark0 :: (Cont val marks -> Code val marks val) -> Cmd val marks val
+  Capture :: (marks -> Bool) -> Point -> Point -> Cmd val marks Point
+  Invk   :: Cont val marks -> val -> Cmd val marks val
+  Invk0 :: Cont val marks -> val -> Cmd val marks val
+  WithMarks :: marks -> Code val marks val -> Cmd val marks val
+  CurPoint :: Cmd val marks Point
+  Unwind :: (marks -> Bool) -> Cmd val marks Point
+  SetPoint :: Point -> Cmd val marks ()
 
   -- failure fragment
-  Err   :: String -> Cmd val a
+  Err   :: String -> Cmd val marks a
 
-instance MonadFail (Free (Cmd val)) where
+instance MonadFail (Free (Cmd val marks)) where
   fail = liftF . Err
 
-instance (Show val) => Show (Cmd val a) where
+instance (Show val, Show marks) => Show (Cmd val marks a) where
   show (SetL f l f') = "(SetL " ++ show f ++ " " ++ show l ++ " " ++ show f' ++ ")"
   show (SetV f n v) = "(SetV " ++ show f ++ " " ++ show n ++ " " ++ show v ++ ")"
   show (Get p) = "(Get " ++ show p ++ ")"
@@ -54,11 +60,18 @@ instance (Show val) => Show (Cmd val a) where
   show New = "New"
   show CurF = "CurF"
   show (WithF f c) = "(WithF " ++ show f ++ " " ++ fromFree 0 c ++ ")"
-  show (Mark f) = "(Mark <...>)"
-  show (Invk k v) = "(Invk <...> <...>)"
+  show (Mark _) = "(Mark <...>)"
+  show (Mark0 _) = "(Mark0 <...>)"
+  show (Capture _ pcur pk) = "(CopyUpto <...> " ++ show pcur ++ " " ++ show pk ++ ")"
+  show (Invk _ v) = "(Invk <...> (" ++ show v ++ "))"
+  show (Invk0 _ v) = "(Invk0 <...> (" ++ show v ++ "))"
+  show (WithMarks mrks f) = "(WithMarks " ++ show mrks ++ " " ++ show f ++ ")"
+  show (Unwind _) = "(Unwind <...> <...>)"
+  show CurPoint = "CurPoint"
+  show (SetPoint p) = "(SetPoint " ++ show p ++ ")"
   show (Err s) = "(Err " ++ s ++ ")"
 
-instance (Show a, Show val) => Show (Code val a) where
+instance (Show a, Show val, Show marks) => Show (Code val marks a) where
   show x = fromFree 0 x
 
 
@@ -66,44 +79,68 @@ instance (Show a, Show val) => Show (Code val a) where
 --- boilerplate liftings ---
 ----------------------------
 
-setl :: Frame -> Label -> Frame -> Code val ()
+setl :: Frame -> Label -> Frame -> Code val marks ()
 setl f l f' = liftF (SetL f l f')
 
-setv :: Frame -> Name -> val -> Code val ()
+setv :: Frame -> Name -> val -> Code val marks ()
 setv f n v = liftF (SetV f n v)
 
-get :: Path -> Code val val
+get :: Path -> Code val marks val
 get = liftF . Get
 
-getv :: Frame -> Name -> Code val val
+getv :: Frame -> Name -> Code val marks val
 getv f n = liftF (GetV f n)
 
-new :: Code val Frame
+new :: Code val marks Frame
 new = liftF New
 
-curf :: Code val Frame
+curf :: Code val marks Frame
 curf = liftF CurF
 
-withf :: Frame -> Code val val -> Code val val
+withf :: Frame -> Code val marks val -> Code val marks val
 withf f c = liftF (WithF f c)
 
-err :: String -> Code val a
+err :: String -> Code val marks a
 err = liftF . Err
 
-mark :: (Cont val -> Code val val) -> Code val val
+mark :: (Cont val marks -> Code val marks val) -> Code val marks val
 mark = liftF . Mark
 
-invk :: Cont val -> val -> Code val val
+mark0 :: (Cont val marks -> Code val marks val) -> Code val marks val
+mark0 = liftF . Mark0
+
+capture :: (marks -> Bool) -> Point -> Point -> Code val marks Point
+capture f pcur pk = liftF (Capture f pcur pk)
+
+markuntil :: (Cont val marks -> Code val marks val) -> Code val marks val
+markuntil = liftF . Mark
+
+invk :: Cont val marks -> val -> Code val marks val
 invk κ v = liftF (Invk κ v)
+
+invk0 :: Cont val marks -> val -> Code val marks val
+invk0 κ v = liftF (Invk0 κ v)
+
+withmarks :: marks -> Code val marks val -> Code val marks val
+withmarks sls' m = liftF (WithMarks sls' m)
+
+unwind :: (marks -> Bool) -> Code val marks Point
+unwind = liftF . Unwind
+
+curpoint :: Code val marks Point
+curpoint = liftF CurPoint
+
+setpoint :: Point -> Code val marks ()
+setpoint = liftF . SetPoint
 
 
 ---------------------------------
 --- meta-language interpreter ---
 ---------------------------------
 
-type M val slots a = HFT val (Code val) slots a
+type M val marks a = HFT val (Code val marks) marks a
 
-handler :: Cmd val a -> (a -> Code val val) -> M val slots val
+handler :: (Show val, Show marks) => Cmd val marks a -> (a -> Code val marks val) -> M val marks val
 handler (SetL f l f') k = do
   setLink f l f'
   handle (k ())
@@ -124,26 +161,60 @@ handler CurF k = do
   f <- curFrame
   handle (k f)
 handler (WithF f c) k = do
-  sls <- curSlots
-  p <- pushStack f k sls
-  local (\ _ -> p) (handle c)
+  sls' <- curMarks
+  p <- pushStack f k sls'
+  setPoint p
+  handle c
 handler (Err m) _ =
   throwError m
 handler (Mark f) k = do
   p <- curPoint
   handle (do v <- f (p , k); k v)
+handler (Mark0 f) k = do
+  p <- curPoint
+  handle (f (p , k))
+handler (Capture f pcur pk) k = do
+  x <- foldLinksUntil pcur pk f copyAndLink
+  handle (k x)
+handler (Unwind f) k = do
+  p <- curPoint
+  p' <- unwindUntil p
+  handle (k p')
+  where
+    unwindUntil p0 = do
+      sf <- getStackFrame p0
+      if f (marks sf)
+      then return p0
+      else case coupling sf of
+             Just p' -> unwindUntil p'
+             Nothing -> return p0
 handler (Invk (p , k) v) _ = do
-  local (\ _ -> p) (handle (k v))
+  setPoint p
+  handle (k v)
+handler (Invk0 (p , k) v) k' = do
+  setPoint p
+  handle (k v >>= k')
+handler (WithMarks mrks c) k = do
+  f <- curFrame
+  p <- pushStack f k mrks
+  setPoint p
+  handle c
+handler CurPoint k = do
+  p <- curPoint
+  handle (k p)
+handler (SetPoint p) k = do
+  setPoint p
+  handle (k ())
 
-
-handle :: Code val val -> M val slots val
+handle :: (Show val, Show marks) => Code val marks val -> M val marks val
 handle (Stop x) = do
   p <- curPoint
   s <- getStack
-  case lns (s !! p) of
-    [] -> return x
-    (p' : _) -> do
-      local (\ _ -> p') (handle (knt (s !! p) x))
+  case coupling (s !! p) of
+    Nothing -> return x
+    Just p' -> do
+      setPoint p'
+      handle (knt (s !! p) x)
 handle (Step x k) = handler x k
 
 
@@ -151,5 +222,5 @@ handle (Step x k) = handler x k
 --- run ---
 -----------
 
-runM :: M val slots val -> slots -> Either String val
-runM m sls = runHFT m Stop sls
+runM :: M val marks val -> marks -> Either String val
+runM m sls' = runHFT m Stop sls'
