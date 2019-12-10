@@ -190,7 +190,7 @@ handler (Invk (p , k) v) _ = do
   handle (k v)
 handler (Invk0 (p , k) v) k' = do
   setPoint p
-  handle (k v >>= k')
+  handle (do v' <- k v; k' v')
 handler (WithMarks mrks c) k = do
   f <- curFrame
   p <- pushStack f k mrks
