@@ -54,7 +54,8 @@ instance Show Val where
 -----------------------------------
 
 interp :: Expr -> Code Val Slots Val
-interp (Num i) = return (NumV i)
+interp (Num i) =
+  return (NumV i)
 interp (Plus e1 e2) = do
   (NumV i1) <- interp e1
   (NumV i2) <- interp e2
@@ -73,15 +74,15 @@ interp (App e1 e2) = do
       withf f' (interp e)
     ContV k -> do
       invk k v2
-    DelimContV (p , k) -> do
+    DelimContV (p , k) -> do -- E[(λ x . C[x]) v] -> E[C[v]]
       pcur <- curpoint
-      p' <- capture id p pcur
+      p' <- recouple id p pcur
       invk0 (p' , k) v2
     _ -> err $ "cannot apply non-function value: " ++ show v
 interp (Var p) = do
   get p
 interp (CallCC e) = do
-  mark (\ k -> do
+  label (\ k -> do
     f  <- curf
     f' <- new
     setl f' P f
@@ -89,8 +90,8 @@ interp (CallCC e) = do
     withf f' (interp e))
 interp (Prompt e) = do
   withmarks True (interp e)
-interp (Control e) = do
-  mark0 (\ k -> do
+interp (Control e) = do -- control (λ k . c)
+  label0 (\ k -> do
     f  <- curf
     f' <- new
     setl f' P f
