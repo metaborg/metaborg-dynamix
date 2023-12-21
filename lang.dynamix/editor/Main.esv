@@ -10,8 +10,7 @@ language
   
   extensions : dnx
 
-  provider : target/metaborg/stratego.ctree
-  provider : target/metaborg/stratego-javastrat.jar
+  provider : target/metaborg/stratego.jar
 
   on save : dnx-on-save
   

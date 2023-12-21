@@ -46,15 +46,19 @@ exports:
 
 language:
   sdf:
+    enabled: true
     pretty-print: Dynamix
     sdf2table: java
     placeholder:
       prefix: "$"
   stratego:
-    format: ctree
+    enabled: true
+    format: jar
     args:
     - -la
     - stratego-lib
+    - -la
+    - stratego-gpp
     - -la
     - stratego-sglr
     - -la
